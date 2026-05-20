@@ -4,6 +4,51 @@ Append-only. Newest at top.
 
 ---
 
+## 2026-05-21 — PWA hardening pass (mobile-pwa skill review)
+
+Touched: [[dev]], [[arch]], [[design]].
+
+Eight items shipped in one commit, walked from the mobile-pwa skill's
+references (service-worker.md, caching-strategies.md, install-prompt.md,
+ios-caveats.md):
+
+1. **Opt-in SW update flow.** Removed unconditional `skipWaiting()` from
+   install and `clients.claim()` from activate. New worker stays waiting
+   until the page posts `{type:'SKIP_WAITING'}`. index.html boot script
+   detects updates via `updatefound` + new worker `statechange='installed'`
+   while a controller exists, surfaces a cream-paper toast (↻ + ✕),
+   reloads on `controllerchange`. CACHE_VERSION bumped v1→v2.
+2. **Styled offline.html.** Precached at install time. networkFirst falls
+   back to it before the inline-string last resort. Same paper-grain
+   noise as the app, ⊘ sigil, tap-anywhere-to-reload.
+3. **Raster icon set.** icon-180.png (apple-touch), icon-192.png,
+   icon-512.png, icon-maskable-512.png. Rendered from icon.svg /
+   icon-maskable.svg via Chrome headless (rsvg-convert not installed).
+   manifest.webmanifest extended; apple-touch-icon link updated.
+4. **Navigation preload.** Enabled in SW activate. networkFirst races
+   `event.preloadResponse` against fetch+timeout.
+5. **Cache size cap.** FIFO `trimCache(name, max)` helper. Runtime
+   cache capped at 40 entries. Called after every cache.put in SWR + NF.
+6. **theme_color → cream paper.** `#f6f1e7` in both manifest and
+   index.html meta. Was `#161310` (ink — wrong).
+7. **prefers-reduced-motion.** Wrapped all keyframes / transitions in
+   the media query: choice glow/shake, Cistercian fade, tile press
+   bounce, new-bit pop, timer ring spin, mode-btn hover, toast +
+   install transitions.
+8. **Install affordance.** Chrome BIP captured + suppressed; revealed
+   on game-over only, never first paint, never during play. iOS Safari
+   gets the same symbol-only ⤓ button as a static A2HS hint. Dismissal
+   persists in `heptaweave.installHintDismissed`.
+
+Verification: smoke-pure.mjs still passes; auto-play.html headless
+screenshot shows the play screen renders correctly; gameover-sim.html
+reaches the game-over screen cleanly; offline.html renders standalone;
+icon-* PNGs are exact-pixel and non-zero. The smoke-dom.html harness
+still shows the pre-existing choiceA/choiceB import errors recorded in
+the previous session — unchanged by this pass.
+
+Commit: see below.
+
 ## 2026-05-20 — tune session (logogram balance + score format + slider UI)
 
 Touched: [[dev]], [[arch]], [[pm]], [[design]], `_index.md`.

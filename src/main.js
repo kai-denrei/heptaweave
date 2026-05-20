@@ -28,6 +28,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const LS_RENDERER = 'heptaweave.renderer';
 const LS_BEST     = 'heptaweave.best';
 const LS_TUNE     = 'heptaweave.tune';
+const LS_INSTALL_DISMISSED = 'heptaweave.installHintDismissed';
 
 /** Read tuning params written by scripts/tune.html. Returns {} if none. */
 function loadTune() {
@@ -57,6 +58,84 @@ function loadBest() {
 }
 function saveBest(best) {
   try { localStorage.setItem(LS_BEST, JSON.stringify(best)); } catch {}
+}
+
+function installHintDismissed() {
+  try { return localStorage.getItem(LS_INSTALL_DISMISSED) === '1'; }
+  catch { return false; }
+}
+function setInstallHintDismissed() {
+  try { localStorage.setItem(LS_INSTALL_DISMISSED, '1'); } catch {}
+}
+
+// ============================================================================
+// Install prompt — Chrome beforeinstallprompt + iOS Safari A2HS fallback
+// ============================================================================
+// We DON'T fire on first paint. The affordance is only revealed AFTER a run
+// completes (game-over screen). Symbol-only ⤓ button; tapping it either
+// invokes the deferred BIP (Android/Chrome) or — on iOS Safari where there's
+// no BIP event — does nothing on click but the affordance itself acts as a
+// gentle "this is installable" hint. Dismissal persists in localStorage.
+let deferredInstallPrompt = null;
+let isIosInstallable = false;
+
+function detectIosInstallable() {
+  const ua = (navigator.userAgent || '').toLowerCase();
+  const isIos = /iphone|ipad|ipod/.test(ua);
+  // exclude in-app browsers + already-standalone
+  const isStandalone =
+    (typeof window.matchMedia === 'function' &&
+      window.matchMedia('(display-mode: standalone)').matches) ||
+    navigator.standalone === true;
+  const isSafari = isIos && /safari/.test(ua) && !/crios|fxios|edgios/.test(ua);
+  return isSafari && !isStandalone;
+}
+
+function wireInstallCapture() {
+  window.addEventListener('beforeinstallprompt', (ev) => {
+    // Block Chrome's default mini-infobar so we can decide when to show.
+    ev.preventDefault();
+    deferredInstallPrompt = ev;
+  });
+  // Reset on successful install so we don't keep nagging.
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    setInstallHintDismissed();
+    const btn = document.getElementById('installAffordance');
+    if (btn) btn.hidden = true;
+  });
+  isIosInstallable = detectIosInstallable();
+}
+
+function maybeShowInstallAffordance() {
+  const btn = document.getElementById('installAffordance');
+  if (!btn) return;
+  if (installHintDismissed()) { btn.hidden = true; return; }
+  if (!deferredInstallPrompt && !isIosInstallable) { btn.hidden = true; return; }
+  btn.hidden = false;
+}
+
+function wireInstallAffordance() {
+  const btn = document.getElementById('installAffordance');
+  if (!btn) return;
+  btn.addEventListener('click', async (ev) => {
+    ev.stopPropagation(); // don't bubble to gameover's "tap to return"
+    if (deferredInstallPrompt) {
+      const promptEv = deferredInstallPrompt;
+      deferredInstallPrompt = null;
+      try {
+        promptEv.prompt();
+        await promptEv.userChoice;
+      } catch {}
+      setInstallHintDismissed();
+      btn.hidden = true;
+    } else if (isIosInstallable) {
+      // No programmatic prompt on iOS Safari. The button itself IS the hint;
+      // tapping it dismisses (acknowledges) so it doesn't reappear forever.
+      setInstallHintDismissed();
+      btn.hidden = true;
+    }
+  });
 }
 
 // ============================================================================
@@ -450,6 +529,9 @@ function showGameOver({ mode, score, errors }) {
 
   showScreen('gameover');
   store.set({ phase: PHASE.GAME_OVER });
+  // After a run completes is when we reveal the install affordance (if any).
+  // Never on first paint, never during play.
+  maybeShowInstallAffordance();
 }
 
 // ============================================================================
@@ -594,6 +676,10 @@ function backToLanding() {
   teardownTimerRing();
   store.set({ phase: PHASE.LANDING });
   showScreen('landing');
+  // Hide the install affordance on the way out of game-over so it doesn't
+  // flash on landing during the screen swap.
+  const inst = document.getElementById('installAffordance');
+  if (inst) inst.hidden = true;
   refreshAbIndicator();
 }
 
@@ -650,5 +736,7 @@ export function boot() {
   refreshAbIndicator();
   wireLanding();
   wireGameOver();
+  wireInstallCapture();
+  wireInstallAffordance();
   showScreen('landing');
 }

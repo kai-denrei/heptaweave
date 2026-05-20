@@ -2,7 +2,7 @@
 role: design
 owner: claude-on-kainode
 status: active
-last-updated: 2026-05-20
+last-updated: 2026-05-21
 ---
 
 # Design — heptaweave
@@ -23,6 +23,10 @@ Visual language, micro-interactions, accessibility constraints, copy-free UX.
 | 2026-05-20 | Cistercian dominates the center at `min(60vw, 340px)`. Choice tiles nestle close — slight overlap with the Cistercian's bounding box is intentional. | "Almost as if part of the same structure." Actual ink doesn't collide because the canonical V2 glyph leaves significant halo air around the rendered ensō. | [[arch]] |
 | 2026-05-20 | Binary score row reads left-to-right, LSB first. Each bit is a brush mark: blob (`●`) for 1, hyphen (`–`) for 0. Always 8 marks. | Reading direction matches "the row fills from the left" intuition. Position 1 = bit 0 = first to light up. | [[dev]] |
 | 2026-05-20 | Choice-glyph visual tune locked: gap 82°/46°, bulge 0.45/0.44/0.38, mark spread 0.8, dot 0.33 / dash 0.03, halo 0.85, wobble 0.5, vbPadFrac 0 (glyph fills the tile, no halo air margin). | User-dialed via the slider tuner, confirmed "satisfying." | [[dev]] |
+| 2026-05-21 | theme_color = cream paper `#f6f1e7` (was ink `#161310`). manifest.webmanifest + index.html meta in sync. | The app's *background* is cream paper; theme_color should match that, not the foreground ink. iOS standalone status bar + Android chrome tint will now read as continuous paper. | [[dev]] |
+| 2026-05-21 | All motion gated by `prefers-reduced-motion: reduce`: choice glow/shake animation neutralized; Cistercian opacity+blur transition becomes instantaneous; tile press-bounce removed; new-bit score pop disabled; mode-btn hover scale removed; toast + install affordance transitions zeroed. Discrete state changes still work (visibility, color). | OS accessibility setting MUST be honored — vestibular sensitivity is real. Game still plays; only the kinetic flourishes pause. | [[dev]] |
+| 2026-05-21 | Meta-UI text policy: the "no Latin / no Arabic numerals during play" rule applies to the play surface. Update toast + install affordance appear ONLY on landing or game-over — meta-UI surfaces — and use universal symbols (↻ ⤓ ⊘ ✕) rather than text labels, to stay consistent with the project's symbol-only ethos. No words are introduced. | Symbols carry the same intent as text at a fraction of the noise. ↻ = "refresh," ⤓ = "save/install/download," ⊘ = "no signal," ✕ = "close." All near-universal. | [[pm]] |
+| 2026-05-21 | Install affordance is symbol-only (⤓), 56px round, sits on the game-over screen below the score trinity. Cream-paper toast for SW updates, ↻ glyph + small dismiss ✕, 999px pill, sits above safe-area bottom. | Meta-UI must read as the same physical artifact as the rest of the app — same paper, same ink, same restraint. | [[dev]] |
 
 ## Dead Ends
 <!-- APPEND ONLY. Never delete. -->
@@ -49,5 +53,6 @@ Blocked by:
 Feeds into: [[dev]]
 
 ## Session Log
+- 2026-05-21 (PWA hardening) — theme_color flipped to cream paper. prefers-reduced-motion wrap added across all keyframes / transitions. Meta-UI surfaces (update toast, install affordance, offline page) introduced and styled in the cream/ink palette using symbol-only labels (↻ ⤓ ⊘ ✕).
 - 2026-05-20 (tune session) — Layout decision locked (organic quincunx). Cistercian sized up to `min(60vw, 340px)` so it dominates. Score representation fixed to 8-bit LSB-left. Choice-glyph visual constants captured from the user's tune session. Two design lessons added (proportions-as-spec, organic-via-varied-positions).
 - 2026-05-20 — Design role seeded.

@@ -6,9 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.webmanifest?v=552b654e" />
-  <meta name="theme-color" content="#161310" />
-  <link rel="apple-touch-icon" href="icon.svg?v=552b654e" />
+  <link rel="manifest" href="manifest.webmanifest?v=2d689cf5" />
+  <!-- theme_color = cream paper to match the app background; ios + android
+       chrome use this for the system status / address-bar tint. -->
+  <meta name="theme-color" content="#f6f1e7" />
+  <link rel="apple-touch-icon" href="icon-180.png?v=2d689cf5" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="heptaweave" />
@@ -21,9 +23,9 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="cb" content="552b654e" />
-  <link rel="icon" type="image/svg+xml" href="public/cb-shapes/21.svg?v=552b654e" />
-  <script src="public/cb-badge.js?v=552b654e" defer></script>
+  <meta name="cb" content="2d689cf5" />
+  <link rel="icon" type="image/svg+xml" href="public/cb-shapes/45.svg?v=2d689cf5" />
+  <script src="public/cb-badge.js?v=2d689cf5" defer></script>
 
   <style>
     :root {
@@ -243,6 +245,92 @@
       50%{ transform: scale(1.20); opacity: 1; }
       100%{ transform: scale(1.00); opacity: 1; }
     }
+
+    /* ====== META-UI: update toast + install hint ======
+       These appear OUTSIDE the play surface (only landing + game-over reach
+       them). Symbol-only per design constraint. Cream pill, ink type, hand-
+       drawn feel via a subtle inset. Tap-target is generous (≥44px). */
+    .meta-toast {
+      position: fixed;
+      left: 50%;
+      bottom: max(20px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 18px;
+      min-height: 44px;
+      background: var(--paper);
+      color: var(--ink);
+      border: 1px solid rgba(22, 19, 16, 0.18);
+      border-radius: 999px;
+      box-shadow: 0 2px 14px rgba(22, 19, 16, 0.14), 0 1px 0 rgba(22, 19, 16, 0.06) inset;
+      font: 400 22px/1 "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", ui-serif, serif;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 240ms ease-out, transform 240ms ease-out;
+      transform: translate(-50%, 8px);
+    }
+    .meta-toast[data-visible="1"] {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, 0);
+    }
+    .meta-toast .dismiss {
+      font-size: 18px;
+      opacity: 0.45;
+      padding: 0 4px;
+      cursor: pointer;
+    }
+    .meta-toast .dismiss:hover { opacity: 0.85; }
+    .meta-toast.update .glyph { font-size: 26px; }
+    .meta-toast.install .glyph { font-size: 26px; }
+
+    /* Inline install affordance on the game-over screen — symbol-only,
+       low-key, easy to ignore. */
+    .install-affordance {
+      margin-top: 4px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 1px solid rgba(22, 19, 16, 0.20);
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font: 400 30px/1 "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", ui-serif, serif;
+      opacity: 0.55;
+      transition: opacity 200ms, transform 120ms;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .install-affordance:hover { opacity: 1; }
+    .install-affordance:active { transform: scale(0.94); }
+    .install-affordance[hidden] { display: none; }
+
+    /* ====== prefers-reduced-motion ======
+       Honor the OS accessibility setting: freeze the choice glow/shake, the
+       Cistercian fade, the active-tile bounce, the new-bit pop, and any
+       continuous timer ring animation. Discrete state changes (a tile being
+       added/removed, the Cistercian opacity flipping instantly) still work
+       — only the *animations themselves* are neutralized. */
+    @media (prefers-reduced-motion: reduce) {
+      .choice-tile { transition: none; }
+      .choice-tile:active { transform: none; }
+      .choice-tile.correct,
+      .choice-tile.wrong { animation: none; }
+      .cistercian-stage svg { transition: none; }
+      .score-row .new-bit { animation: none; }
+      .timer-ring-wrap svg circle { animation: none !important; transition: none !important; }
+      .mode-btn { transition: none; }
+      .meta-toast { transition: opacity 0ms, transform 0ms; }
+      .install-affordance { transition: none; }
+    }
   </style>
 </head>
 <body>
@@ -276,14 +364,95 @@
         <div class="big-heptacipher" id="bigHeptacipher"></div>
         <div class="big-cistercian" id="bigCistercian"></div>
       </div>
+      <!-- Install affordance (Chrome BIP + iOS A2HS). Hidden by default;
+           main.js reveals it after a run completes if the install is offerable
+           and the user hasn't already dismissed it. Symbol-only: ⤓ = save/
+           install. -->
+      <button class="install-affordance" id="installAffordance" type="button"
+              aria-label="install" hidden>⤓</button>
     </section>
+
+    <!-- Update-available toast. Shown when a new SW version has finished
+         installing in the background. Tap accepts the update (posts
+         SKIP_WAITING, page reloads on controllerchange). Small ✕ dismisses
+         for the current session only. -->
+    <div class="meta-toast update" id="updateToast" role="alert"
+         aria-label="new version available — tap to refresh" hidden>
+      <span class="glyph" aria-hidden="true">↻</span>
+      <span class="dismiss" id="updateToastDismiss" role="button"
+            aria-label="dismiss">✕</span>
+    </div>
 
   </div>
 
   <script type="module">
-    // Service worker registration.
+    // ---- Service worker registration with opt-in update flow. ----
+    // We never call skipWaiting() on the worker side at install time. Instead,
+    // we listen for updatefound + the new worker reaching 'installed' state
+    // WHILE the page is controlled by an older worker (= a true update, not a
+    // first install). When that happens we surface the toast; tapping it posts
+    // SKIP_WAITING and we reload on controllerchange.
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js', { scope: './' }).then((reg) => {
+          const toast = document.getElementById('updateToast');
+          const dismiss = document.getElementById('updateToastDismiss');
+          if (!toast || !dismiss) return;
+
+          let waitingWorker = null;
+          let reloading = false;
+
+          function showUpdateToast(worker) {
+            waitingWorker = worker;
+            toast.hidden = false;
+            // Two-frame delay so the transition fires from opacity:0.
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              toast.dataset.visible = '1';
+            }));
+          }
+          function hideUpdateToast() {
+            toast.dataset.visible = '0';
+            // Match CSS transition duration before hiding.
+            setTimeout(() => { toast.hidden = true; }, 280);
+          }
+
+          toast.addEventListener('click', (ev) => {
+            if (ev.target === dismiss) return; // dismiss handles itself
+            if (!waitingWorker) return;
+            waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+          });
+          dismiss.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            hideUpdateToast();
+          });
+
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (reloading) return;
+            reloading = true;
+            window.location.reload();
+          });
+
+          function trackInstall(worker) {
+            if (!worker) return;
+            worker.addEventListener('statechange', () => {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                // A new build finished installing AND we already had a
+                // controller → this is an update, not a first install.
+                showUpdateToast(worker);
+              }
+            });
+          }
+
+          // If a waiting worker is already there at boot (e.g. user reopened
+          // the tab between installs), surface the toast immediately.
+          if (reg.waiting && navigator.serviceWorker.controller) {
+            showUpdateToast(reg.waiting);
+          }
+          reg.addEventListener('updatefound', () => {
+            trackInstall(reg.installing);
+          });
+        }).catch(() => {});
+      });
     }
 
     const cb = document.querySelector('meta[name="cb"]')?.content || String(Date.now());

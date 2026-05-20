@@ -2,7 +2,7 @@
 role: dev
 owner: claude-on-kainode
 status: active
-last-updated: 2026-05-20
+last-updated: 2026-05-21
 ---
 
 
@@ -24,6 +24,14 @@ Implementation details, file-level conventions, build/test commands, dev-server.
 | 2026-05-20 | Tunable params on `numeralV2`: `gapAngleDeg`/`gapWidthDeg`/`tailLengthDeg`/`lobeBulgeOutward`/`lobeBulgeInward`/`dotSizeFactor`/`dashWidthFactor`/`dashMinWidth`/`wetDropSizeFrac`/`disableJitter`. Each preserves the canonical V2 default when omitted; passing an explicit number ALSO disables the per-render jitter on that field (for reproducible tuning). | The original heptapod-logograms had this as a slider UI; we needed the same machinery to dial in the heptaweave look without recompiling. | [[arch]] |
 | 2026-05-20 | `scripts/tune.html` exposes those params as 18 sliders with live preview of 4 sample numbers. Sliders write a diff-vs-canonical object to `localStorage.heptaweave.tune`. `main.js` reads that key and spreads it over the choice-tile call. | Lets the user dial in from their phone, see results immediately in the running game, no rebuild. | [[pm]] |
 | 2026-05-20 | Heptaweave choice-tile defaults locked from user-tuning session 2026-05-20: gap 82°/46°, bulgeScale 0.45, outward 0.44, inward 0.38, digitGap 0.04, markSpread 0.8, dotSize 0.33, dashWidth 0.03, halo 0.85, wobble 0.5, detail 0.13, vbPadFrac 0. Hardcoded as `HEPTAWEAVE_CHOICE_TUNE` in main.js. localStorage still wins for future re-tuning. | User dialed in these specific values via the tune UI and confirmed "this looks satisfying". | [[design]] |
+| 2026-05-21 | PWA hardening pass — removed unconditional `skipWaiting()` from SW install and `clients.claim()` from activate. SW now waits for `{type:'SKIP_WAITING'}` postMessage. index.html boot script listens for `updatefound` + `statechange='installed'` while a controller exists and surfaces an update toast. Page reloads on `controllerchange`. | mobile-pwa skill: unconditional skipWaiting yanks fresh JS underneath in-flight sessions. Per-page opt-in is the canonical pattern. | [[arch]] [[design]] |
+| 2026-05-21 | Created `offline.html` precached at install time. networkFirst falls back to it on offline navigations; legacy inline-string fallback retained as last resort. | Styled offline page matches the app's cream-paper aesthetic — same paper-grain noise, symbol-only `⊘`, tap-to-reload. | [[design]] |
+| 2026-05-21 | Added raster icons (180/192/512/maskable-512) rendered from icon.svg via Chrome headless screenshot. Updated manifest.webmanifest to list PNGs alongside the SVG entries. apple-touch-icon now points at icon-180.png. | iOS Safari doesn't support SVG apple-touch-icon reliably; Android prefers a 192/512 pair for the install banner. SVG kept for `purpose: "any"` because Chromium supports it. | [[design]] |
+| 2026-05-21 | Service worker: enabled `navigationPreload`. networkFirst now races preload alongside the network fetch and timeout. | Cuts navigation cold-start by hundreds of ms — preload fires while the SW worker boots. | [[arch]] |
+| 2026-05-21 | Added FIFO `trimCache(name, max)` helper. Runtime cache capped at 40 entries; called after every put in staleWhileRevalidate + networkFirst. Static cache (precache list) intentionally not trimmed. | Without a cap a long-running PWA accretes hundreds of one-off URL variants (cb-fingerprinted paths). | [[arch]] |
+| 2026-05-21 | theme_color changed to cream paper `#f6f1e7` in both manifest.webmanifest and index.html `<meta name="theme-color">`. Previous value `#161310` (ink black) was wrong; system status / address bar should match the app background, not the foreground ink. | Design correctness — the app IS cream paper; the dark theme-color was misreading the spec. | [[design]] |
+| 2026-05-21 | Wrapped all motion in `@media (prefers-reduced-motion: reduce)`: choice glow/shake, Cistercian fade, `.choice-tile:active` bounce, new-bit pop, timer ring continuous spin, mode-btn hover transitions, toast/install affordance transitions. | OS accessibility setting MUST be honored. Discrete state changes still work; only animations are neutralized. | [[design]] |
+| 2026-05-21 | Install affordance + iOS A2HS hint: `beforeinstallprompt` captured (preventDefault'd), shown ONLY on the game-over screen, only after a run completes, only if not already dismissed. Symbol-only ⤓ button. On iOS Safari (non-standalone), the same affordance acts as a static "this is installable" hint. Dismissal persists in `heptaweave.installHintDismissed`. | mobile-pwa skill: never block first paint with an install nag; reveal after the user has tasted the product. Symbol-only to honor the no-text-during-play constraint (even though game-over is meta-UI, consistency matters). | [[design]] |
 
 ## Dead Ends
 <!-- APPEND ONLY. Never delete. -->
@@ -37,6 +45,7 @@ Implementation details, file-level conventions, build/test commands, dev-server.
 ## Lessons
 - Verbatim ports across differing folder layouts need an import-rewrite pass.
 - Chrome's dynamic-import error message is unhelpful; cascade-import each file in isolation to find the broken one.
+- **mobile-pwa skill review found 8 actionable items; addressing all of them in one pass.** — 2026-05-21. A single-skill audit before declaring "PWA done" caught: unconditional skipWaiting, no offline page, missing raster icons, no navigation preload, unbounded cache, wrong theme color, missing prefers-reduced-motion, no install affordance. None of these would have shown up in functional testing — they're cross-cutting hygiene the skill specifically calls out. **Run the skill review explicitly as a checklist step before declaring a PWA shipped.**
 
 - **A live-preview slider UI with localStorage persistence is the right tool for tuning any generative-rendering parameter space.** — from the heptaweave tune session, 2026-05-20.
   - **Why it worked:** the user dialed in 14 parameters across ensō / lobes / marks / ink / render in under 10 minutes from their phone, watching the preview update in real time. Locking those values into the renderer afterward took one edit. Without the tune UI we would have iterated "screenshot → guess new constants → rebuild → screenshot" — easily 20× slower and lossy at every step.
@@ -63,5 +72,6 @@ Blocked by:
 Feeds into:
 
 ## Session Log
+- 2026-05-21 (PWA hardening) — Eight-item pass from the mobile-pwa skill review, all addressed in one commit: opt-in SW update toast, precached styled offline.html, raster icon set (180/192/512/maskable-512), navigationPreload race in networkFirst, FIFO cache cap (max 40 runtime entries), theme_color → cream paper, prefers-reduced-motion wrap, install affordance (Chrome BIP + iOS A2HS) gated to game-over with localStorage-persisted dismissal. Lessons: skill-driven review catches a lot of items that drift in early. Symbol-only meta-UI works when you pick well-known glyphs (↻ ⤓ ⊘ ✕).
 - 2026-05-20 (tune session) — Retired choiceA/choiceB; new `numeralV2.js` is a direct port of compositeFlow's V2. Layout switched to organic quincunx slot presets. Score is now fixed 8-bit LSB-on-left. Built `scripts/tune.html` + 18-slider live-preview UI; locked the user's tuned values as `HEPTAWEAVE_CHOICE_TUNE` constants. Three lessons recorded; the tune-UI lesson is the standout (see Lessons).
 - 2026-05-20 — Dev role seeded.

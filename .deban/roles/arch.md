@@ -2,7 +2,7 @@
 role: arch
 owner: claude-on-kainode
 status: active
-last-updated: 2026-05-20
+last-updated: 2026-05-21
 ---
 
 # Architecture — heptaweave
@@ -23,6 +23,9 @@ on parent projects.
 | 2026-05-20 | Single canonical heptacipher renderer: `src/heptacipher/numeralV2.js`. Verbatim port of `renderHeptapodNumeralV2` from heptapod-logograms/compositeFlow.js, minus the draw-mask animation. Choice-tile customization happens via parameters at the call site, NOT by forking the implementation. | A/B "lobes-only vs full mini" was a divergence from the canonical design that lost the original's tuning. The user explicitly preferred the original balance. | [[dev]] [[design]] |
 | 2026-05-20 | Heptaweave-specific knobs (per-project visual tune) layered via `HEPTAWEAVE_CHOICE_TUNE` in main.js, spread on top of canonical V2 defaults. localStorage.heptaweave.tune wins over both, so the slider page can override at runtime. | Layered defaults: canonical (renderer) → project (main.js) → session (localStorage). Each layer is overridable without touching the one below. | [[dev]] |
 | 2026-05-20 | Choice layout is per-count slot presets (LAYOUT_PRESETS) with normalized offsets from play-mid center, plus ±2% gaussian jitter. NOT an even-angle orbit. | Mockup shows organic quincunx (4 corners + bottom-center for 5 choices). Even-angle distribution looked too mechanical. | [[design]] |
+| 2026-05-21 | SW update lifecycle: install caches but does NOT skipWaiting. activate clears stale cache buckets, enables navigationPreload, does NOT clients.claim. New worker stays in `waiting` until the page posts `{type:'SKIP_WAITING'}`. Page detects update via `updatefound` + new worker `statechange === 'installed'` while `controller` exists, shows toast, reloads on `controllerchange`. CACHE_VERSION bumped v1→v2 to force a fresh install on this rollout. | The "instant takeover" footgun: with skipWaiting + claim, a fresh JS bundle can swap in mid-game and rip dependent state apart. The opt-in path costs one tap of friction but is the canonical mobile-pwa pattern. | [[dev]] [[design]] |
+| 2026-05-21 | Caching: three buckets unchanged (HTML networkFirst, JS staleWhileRevalidate, images/manifest cacheFirst). Added: FIFO trimCache helper, runtime cache capped at 40 entries, called after every cache.put in SWR + NF. Static cache (precache list) is small + curated, no cap needed. networkFirst races navigation preload against fetch + timeout. Precache list now includes `./offline.html`. | Unbounded runtime cache → bloat from cb-fingerprinted URL variants over time. Navigation preload cuts cold-start latency for the navigation request. Precached offline page is the styled fallback when the network is dead AND the URL was never cached. | [[dev]] |
+| 2026-05-21 | Install affordance lives on the game-over screen, never on first paint, never during play. Chrome BIP captured via `beforeinstallprompt` + `ev.preventDefault()`; iOS Safari detected by UA + non-standalone display-mode + non-in-app-browser. Dismissal persisted in localStorage as `heptaweave.installHintDismissed`. | After a run is the moment the user has tasted the product — that's when an install prompt converts. Symbol-only ⤓ avoids text-during-meta-UI dissonance. | [[design]] |
 
 ### Bit-milestone difficulty (canonical table)
 Tier = `bitlength(score)`. All three levers advance per tier.
@@ -111,5 +114,6 @@ Blocked by:
 Feeds into: [[dev]]
 
 ## Session Log
+- 2026-05-21 (PWA hardening) — SW update lifecycle moved from auto-takeover to opt-in (page-driven `SKIP_WAITING`). Navigation preload enabled. Runtime cache now FIFO-capped at 40. Install affordance gated to game-over with localStorage dismissal. CACHE_VERSION bumped to v2.
 - 2026-05-20 (tune session) — Replaced A/B renderer split with a single canonical `numeralV2.js` port + a project-tune layer (`HEPTAWEAVE_CHOICE_TUNE`) + an optional localStorage override layer for the slider page. Choice layout switched to per-count organic quincunx presets. Two architecture lessons added.
 - 2026-05-20 — Architecture seeded; difficulty table canonical.

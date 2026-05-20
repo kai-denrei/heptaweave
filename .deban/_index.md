@@ -36,6 +36,9 @@ renderers (lobes-only and full mini) toggleable via a long-press on landing.
 - ⭐ Tuning workflow: `scripts/tune.html` (18-slider live-preview UI with
   localStorage persistence) is the project-default approach for any visual /
   generative parameter dial-in. See [[dev]] and [[pm]] Lessons.
+- PWA update flow is opt-in (page-driven `SKIP_WAITING`), not auto-takeover.
+  Symbol-only meta-UI for update toast (↻) + install affordance (⤓) + offline
+  page (⊘). theme_color is cream paper. prefers-reduced-motion honored.
 
 ## Open Questions (cross-role)
 - See per-role files; ⧖-with-errors dot color, persistence model,

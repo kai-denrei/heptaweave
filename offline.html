@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>⊘</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f1e7" />
+  <style>
+    :root {
+      --bg: #f6f1e7;
+      --paper: #fbf7ee;
+      --ink: #161310;
+      --muted: #8a847a;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+      height: 100vh; height: 100dvh;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .paper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: var(--paper);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    /* Same paper-grain noise the main app uses. */
+    .paper::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.75;
+      mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2' stitchTiles='stitch' seed='3'/><feColorMatrix values='0 0 0 0 0.10  0 0 0 0 0.08  0 0 0 0 0.05  0 0 0 0.22 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+      z-index: 0;
+    }
+    .sigil {
+      position: relative;
+      z-index: 1;
+      font: 400 132px/1 "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", ui-serif, serif;
+      color: var(--ink);
+      opacity: 0.78;
+      letter-spacing: 0;
+    }
+    /* Subtle breath so users sense it's tappable. Frozen for reduced-motion. */
+    @keyframes breath {
+      0%   { opacity: 0.78; }
+      50%  { opacity: 0.45; }
+      100% { opacity: 0.78; }
+    }
+    .sigil { animation: breath 3.2s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .sigil { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="paper" id="paper" role="button" aria-label="offline — tap to retry">
+    <div class="sigil" aria-hidden="true">⊘</div>
+  </div>
+  <script>
+    // Tap anywhere = reload. If we get a connection on the next try, the SW's
+    // networkFirst hands back the real page.
+    document.getElementById('paper').addEventListener('click', () => {
+      location.reload();
+    });
+  </script>
+</body>
+</html>
