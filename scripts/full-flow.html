@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>html,body{margin:0;padding:0;background:#f6f1e7;font-family:ui-monospace,monospace;font-size:11px;color:#444}
+pre{padding:6px;margin:0;white-space:pre-wrap}
+</style>
+</head><body>
+<iframe id="frame" src="../index.html?v=bcbbaaca" style="width:420px;height:920px;border:0;display:block"></iframe>
+<pre id="log"></pre>
+<script>
+const log = document.getElementById('log');
+function out(m) { log.textContent += m + '\n'; }
+
+async function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+(async () => {
+  await wait(1200);
+  const f = document.getElementById('frame');
+  const doc = f.contentDocument;
+  if (!doc) { out('NO DOC'); return; }
+
+  // ENDLESS mode.
+  const inf = doc.querySelector('.mode-btn[data-mode="ENDLESS"]');
+  inf.click();
+  out('clicked ∞');
+  await wait(900);
+
+  // Click all choice tiles in sequence. Since the target is one of them,
+  // any non-target click ends the run (∞ rules).
+  let choices = doc.querySelectorAll('.choice-tile');
+  out('round 1 choices: ' + choices.length);
+
+  // Click each tile until one shifts state (right or wrong both work).
+  for (let i = 0; i < choices.length; i++) {
+    choices[i].click();
+    await wait(800);
+    const gameover = doc.querySelector('#screenGameOver');
+    if (!gameover.hidden) {
+      out('GAME OVER after click ' + i);
+      const dot = gameover.querySelector('#gameOverDot path');
+      out('dot fill: ' + (dot ? dot.getAttribute('fill') : 'none'));
+      const bb = gameover.querySelector('#bigBinary svg');
+      out('big binary paths: ' + (bb ? bb.querySelectorAll('path').length : 0));
+      return;
+    }
+    // Still in play. Refresh choices.
+    choices = doc.querySelectorAll('.choice-tile');
+    if (choices.length === 0) { out('NO CHOICES'); return; }
+    out('continued; new round choices: ' + choices.length);
+  }
+  out('end loop (no game over fired — should not happen for ∞ unless lucky)');
+})();
+</script></body></html>

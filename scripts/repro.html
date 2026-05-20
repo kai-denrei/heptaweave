@@ -1,0 +1,29 @@
+<!doctype html><html><body><pre id="o"></pre><script type="module">
+const o = document.getElementById('o');
+async function tryImport(p) {
+  try { const m = await import(p); o.textContent += 'OK ' + p + ' → ' + Object.keys(m).join(',') + '\n'; }
+  catch (e) { o.textContent += 'ERR ' + p + ' → ' + e.message + '\n'; }
+}
+await tryImport('../src/util/rng.js');
+await tryImport('../src/ink/brush.js');
+await tryImport('../src/ink/splotch.js');
+await tryImport('../src/ink/enso.js');
+await tryImport('../src/ink/filters.js');
+await tryImport('../src/heptacipher/morsePatterns.js');
+await tryImport('../src/heptacipher/morseDigitArc.js');
+await tryImport('../src/heptacipher/choiceA.js');
+await tryImport('../src/heptacipher/choiceB.js');
+await tryImport('../src/cistercian/digitMap.js');
+await tryImport('../src/cistercian/geometry.js');
+await tryImport('../src/cistercian/buildSigil.js');
+await tryImport('../src/cistercian/cistercianInk.js');
+await tryImport('../src/render/binaryScore.js');
+await tryImport('../src/render/timerRing.js');
+await tryImport('../src/render/gameOverDot.js');
+await tryImport('../src/game/state.js');
+await tryImport('../src/game/modes.js');
+await tryImport('../src/game/difficulty.js');
+await tryImport('../src/game/distractors.js');
+await tryImport('../src/game/round.js');
+o.textContent += 'DONE\n';
+</script></body></html>

@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>heptaweave</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest?v=bcbbaaca" />
+  <meta name="theme-color" content="#161310" />
+  <link rel="apple-touch-icon" href="icon.svg?v=bcbbaaca" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="heptaweave" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- Cache-busting (token bumped by scripts/bust.sh).
+       Favicon = one of 64 cb-shapes; the cell rotates on each bust so a
+       glance at the browser tab confirms which build is loaded. cb-badge.js
+       renders the same shape as a corner widget. -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="cb" content="bcbbaaca" />
+  <link rel="icon" type="image/svg+xml" href="public/cb-shapes/60.svg?v=bcbbaaca" />
+  <script src="public/cb-badge.js?v=bcbbaaca" defer></script>
+
+  <style>
+    :root {
+      --bg: #f6f1e7;
+      --paper: #fbf7ee;
+      --ink: #161310;
+      --accent: #8a3a2b;
+      --muted: #8a847a;
+      --teal: #79ead9;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+      height: 100vh; height: 100dvh;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: var(--paper);
+    }
+
+    /* Subtle paper-grain noise behind everything. */
+    .app::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.75;
+      mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2' stitchTiles='stitch' seed='3'/><feColorMatrix values='0 0 0 0 0.10  0 0 0 0 0.08  0 0 0 0 0.05  0 0 0 0.22 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+      z-index: 0;
+    }
+
+    .screen { position: absolute; inset: 0; z-index: 1; }
+    .screen[hidden] { display: none !important; }
+
+    /* ====== LANDING ====== */
+    .landing {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 48px;
+      user-select: none;
+    }
+    .mode-btn {
+      font: 400 96px/1 "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", ui-serif, serif;
+      color: var(--ink);
+      background: transparent;
+      border: none;
+      padding: 24px 32px;
+      cursor: pointer;
+      transition: transform 100ms ease-out, opacity 200ms;
+      opacity: 0.86;
+    }
+    .mode-btn:hover, .mode-btn:active { opacity: 1; transform: scale(1.04); }
+    .mode-btn[data-mode="ENDLESS"] { font-size: 112px; }
+    /* Invisible long-press target for A/B toggle, bottom-right corner. */
+    .ab-toggle {
+      position: absolute;
+      right: 0; bottom: 0;
+      width: 64px; height: 64px;
+      background: transparent;
+      border: none;
+      cursor: default;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ab-indicator {
+      position: absolute;
+      right: 14px; bottom: 14px;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      opacity: 0.22;
+      pointer-events: none;
+      transition: background 200ms, opacity 200ms;
+    }
+    .ab-indicator.flipped { background: var(--accent); opacity: 0.55; }
+
+    /* ====== PLAY ====== */
+    .play {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+      gap: 2px;
+    }
+    .play-top {
+      position: relative;
+      height: 56px;
+    }
+    .score-row {
+      position: absolute;
+      left: max(8px, env(safe-area-inset-left));
+      top: 8px;
+      height: 28px;
+      pointer-events: none;
+    }
+    .score-row svg { overflow: visible; display: block; }
+    .timer-ring-wrap {
+      position: absolute;
+      top: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 56px; height: 56px;
+      pointer-events: none;
+    }
+    .timer-ring-wrap svg { width: 100%; height: 100%; overflow: visible; }
+
+    .play-mid {
+      position: relative;
+      min-height: 0;
+      height: 100%;
+    }
+    .cistercian-stage {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(40vw, 240px);
+      aspect-ratio: 1;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .cistercian-stage svg {
+      width: 100%; height: 100%;
+      color: var(--ink);
+      transition: opacity 400ms ease-out, filter 400ms ease-out;
+    }
+    .cistercian-stage.fading svg { opacity: 0; filter: blur(3px); }
+    .cistercian-stage.hidden svg { opacity: 0; filter: blur(4px); }
+
+    /* Choices orbit the Cistercian. Each tile is absolute-positioned by JS;
+       no border, no background — only the rendered glyph is visible. */
+    .choices {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .choice-tile {
+      position: absolute;
+      background: transparent;
+      border: none;
+      /* border-radius is kept at 50% so the correct/wrong glow box-shadow
+         renders as a circle even though the tile itself has no visible border. */
+      border-radius: 50%;
+      padding: 0;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink);
+      transition: transform 80ms ease-out, opacity 200ms;
+      pointer-events: auto;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .choice-tile:active { transform: scale(0.95); }
+    .choice-tile.correct { animation: glowCorrect 700ms ease-out forwards; }
+    .choice-tile.wrong   { animation: glowWrong 700ms ease-out forwards; }
+    @keyframes glowCorrect {
+      0%   { box-shadow: 0 0 0 0 rgba(46,157,108,0); }
+      40%  { box-shadow: 0 0 0 12px rgba(46,157,108,0.40); }
+      100% { box-shadow: 0 0 0 0 rgba(46,157,108,0); }
+    }
+    @keyframes glowWrong {
+      0%   { box-shadow: 0 0 0 0 rgba(168,58,43,0); transform: translateX(0); }
+      20%  { box-shadow: 0 0 0 8px rgba(168,58,43,0.45); transform: translateX(-4px); }
+      40%  { transform: translateX(4px); }
+      60%  { transform: translateX(-2px); }
+      80%  { transform: translateX(2px); }
+      100% { box-shadow: 0 0 0 0 rgba(168,58,43,0); transform: translateX(0); }
+    }
+    /* Tile size and position are set inline by JS based on choice count. */
+
+    /* ====== GAME OVER ====== */
+    .gameover {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 28px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .gameover .big-binary {
+      width: min(80vw, 460px);
+      height: 80px;
+    }
+    .gameover .big-binary svg { width: 100%; height: 100%; overflow: visible; color: var(--ink); }
+    .gameover-dot svg { width: 56px; height: 56px; overflow: visible; }
+
+    /* Score-bit pop when a new bit appears. */
+    .score-row .new-bit { animation: bitPop 260ms ease-out both; }
+    @keyframes bitPop {
+      0% { transform: scale(0.25); opacity: 0.0; }
+      50%{ transform: scale(1.20); opacity: 1; }
+      100%{ transform: scale(1.00); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- LANDING -->
+    <section class="screen landing" id="screenLanding">
+      <button class="mode-btn" data-mode="TIMED" aria-label="Timed mode">⧖</button>
+      <button class="mode-btn" data-mode="ENDLESS" aria-label="Endless mode">∞</button>
+      <span class="ab-indicator" id="abIndicator"></span>
+      <button class="ab-toggle" id="abToggle" aria-hidden="true" tabindex="-1"></button>
+    </section>
+
+    <!-- PLAY -->
+    <section class="screen play" id="screenPlay" hidden>
+      <div class="play-top">
+        <div class="score-row" id="scoreRow"></div>
+        <div class="timer-ring-wrap" id="timerRingWrap" hidden></div>
+      </div>
+      <div class="play-mid">
+        <div class="cistercian-stage" id="cistercianStage"></div>
+        <div class="choices" id="choices"></div>
+      </div>
+    </section>
+
+    <!-- GAME OVER -->
+    <section class="screen gameover" id="screenGameOver" hidden>
+      <div class="big-binary" id="bigBinary"></div>
+      <div class="gameover-dot" id="gameOverDot"></div>
+    </section>
+
+  </div>
+
+  <script type="module">
+    // Service worker registration.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
+    }
+
+    const cb = document.querySelector('meta[name="cb"]')?.content || String(Date.now());
+    const { boot } = await import(`./src/main.js?v=${cb}`);
+    boot();
+  </script>
+</body>
+</html>

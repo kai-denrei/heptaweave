@@ -1,0 +1,173 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>heptaweave smoke</title>
+<style>
+  body { font: 12px ui-monospace, monospace; background: #f6f1e7; color: #161310; padding: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .cell { border: 1px solid #ddd; padding: 4px; background: #fbf7ee; }
+  .cell label { display:block; font-size: 10px; color: #888; margin-bottom: 4px; }
+  .cell svg { display: block; }
+  #log { background: #111; color: #ddd; padding: 8px; white-space: pre; max-height: 50vh; overflow: auto; }
+  .ok { color: #2e9d6c; }
+  .fail { color: #a83a2b; }
+</style>
+</head>
+<body>
+<h1>heptaweave smoke (DOM)</h1>
+<h2>Cistercian (cardinals)</h2>
+<div id="cistRow" class="row"></div>
+<h2>Renderer A — lobes-only (digits → choice circle)</h2>
+<div id="aRow" class="row"></div>
+<h2>Renderer B — full mini (digits → choice circle)</h2>
+<div id="bRow" class="row"></div>
+<h2>Binary score row, 1..73</h2>
+<div id="scoreRow" class="row"></div>
+<h2>Timer ring at 100%/50%/15%</h2>
+<div id="timerRow" class="row"></div>
+<h2>Log</h2>
+<pre id="log"></pre>
+<script type="module">
+const log = document.getElementById('log');
+function out(msg, cls='') { const s = document.createElement('span'); if (cls) s.className = cls; s.textContent = msg + '\n'; log.appendChild(s); console.log(msg); }
+function ok(msg) { out('  ok  — ' + msg, 'ok'); }
+function fail(msg) { out('  FAIL — ' + msg, 'fail'); }
+
+window.addEventListener('error', (e) => fail('window error: ' + e.message));
+window.addEventListener('unhandledrejection', (e) => fail('unhandled: ' + (e.reason?.message || e.reason)));
+
+try {
+  const { createRng } = await import('../src/util/rng.js');
+  const { renderCistercianInk } = await import('../src/cistercian/cistercianInk.js');
+  const { renderChoiceA } = await import('../src/heptacipher/choiceA.js');
+  const { renderChoiceB } = await import('../src/heptacipher/choiceB.js');
+  const { renderBinaryScore } = await import('../src/render/binaryScore.js');
+  const { createTimerRing } = await import('../src/render/timerRing.js');
+  const { renderGameOverDot } = await import('../src/render/gameOverDot.js');
+  const { buildInkFilters } = await import('../src/ink/filters.js');
+  ok('all modules loaded');
+
+  // ============ Cistercian cardinals ============
+  const cistRow = document.getElementById('cistRow');
+  const cardinals = [0, 1, 9, 99, 999, 9999, 1234, 5678];
+  for (const n of cardinals) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = `<label>${n}</label>`;
+    const size = 140;
+    const rng = createRng(n + 1);
+    const { groupEl, segmentPaths } = renderCistercianInk({
+      number: n, size, rng: createRng((n + 1) * 17),
+      padFrac: 0.10, strokeWidthFrac: 0.030,
+    });
+    const filters = buildInkFilters({
+      idTag: 'smoke' + n, size, bleedScale: 1.0, haloOpacity: 0.7,
+      liquidWobble: 4, liquidDetail: 0.10, rng,
+    });
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    svg.setAttribute('width', size);
+    svg.setAttribute('height', size);
+    svg.style.overflow = 'visible';
+    svg.style.color = '#161310';
+    const innerHTML = `<g fill="currentColor">${segmentPaths.map(d => `<path d="${d}"/>`).join('')}</g>`;
+    svg.innerHTML = `<defs>${filters.defs}</defs>
+      <g filter="url(#${filters.farId})" opacity="${filters.farOpacity}" fill="currentColor">${innerHTML}</g>
+      <g filter="url(#${filters.nearId})" opacity="${filters.nearOpacity}" fill="currentColor">${innerHTML}</g>
+      <g filter="url(#${filters.crispId})" opacity="0.92" fill="currentColor">${innerHTML}</g>`;
+    cell.appendChild(svg);
+    cistRow.appendChild(cell);
+
+    if (!segmentPaths || segmentPaths.length === 0) {
+      if (n !== 0) fail(`cistercian ${n} has 0 segments`);
+      else ok(`cistercian 0 has only stave (${segmentPaths.length} segments)`);
+    } else {
+      ok(`cistercian ${n} → ${segmentPaths.length} segments`);
+    }
+  }
+
+  // ============ Renderer A ============
+  const aRow = document.getElementById('aRow');
+  for (const n of cardinals) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = `<label>A ${n}</label>`;
+    const svg = renderChoiceA({ number: n, size: 100, seed: 1234 });
+    cell.appendChild(svg);
+    aRow.appendChild(cell);
+    if (svg.querySelectorAll('path').length === 0) fail(`A ${n} produced 0 paths`);
+    else ok(`A ${n} → ${svg.querySelectorAll('path').length} paths`);
+  }
+
+  // ============ Renderer B ============
+  const bRow = document.getElementById('bRow');
+  for (const n of cardinals) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = `<label>B ${n}</label>`;
+    const svg = renderChoiceB({ number: n, size: 100, seed: 1234 });
+    cell.appendChild(svg);
+    bRow.appendChild(cell);
+    if (svg.querySelectorAll('path').length === 0) fail(`B ${n} produced 0 paths`);
+    else ok(`B ${n} → ${svg.querySelectorAll('path').length} paths`);
+  }
+
+  // ============ Binary score ============
+  const scoreRow = document.getElementById('scoreRow');
+  for (const s of [1, 2, 3, 7, 8, 15, 31, 73]) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = `<label>${s}</label>`;
+    const { groupEl, width } = renderBinaryScore({ score: s, markSize: 14, rng: createRng(s + 1) });
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `${-(width)} -16 ${width + 16} 32`);
+    svg.setAttribute('width', width + 16);
+    svg.setAttribute('height', 32);
+    svg.style.color = '#161310';
+    svg.appendChild(groupEl);
+    cell.appendChild(svg);
+    scoreRow.appendChild(cell);
+    ok(`score ${s} (binary ${s.toString(2)}) → ${svg.querySelectorAll('path').length} paths`);
+  }
+
+  // ============ Timer ring ============
+  const timerRow = document.getElementById('timerRow');
+  for (const frac of [1.0, 0.5, 0.15]) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = `<label>${frac.toFixed(2)}</label>`;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 56 56');
+    svg.setAttribute('width', 56);
+    svg.setAttribute('height', 56);
+    const ring = createTimerRing({ cx: 28, cy: 28, radius: 24, strokeWidth: 5 });
+    ring.update(frac * 60000, 60000);
+    svg.appendChild(ring.el);
+    cell.appendChild(svg);
+    timerRow.appendChild(cell);
+    ok(`timer ring at ${frac} → stroke ${ring.el.getAttribute('stroke')}`);
+  }
+
+  // ============ Game-over dot ============
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.innerHTML = '<label>game-over dot (clean / errored)</label>';
+  for (const clean of [true, false]) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '-30 -30 60 60');
+    svg.setAttribute('width', 48); svg.setAttribute('height', 48);
+    svg.appendChild(renderGameOverDot({ clean, size: 48, rng: createRng(1) }));
+    cell.appendChild(svg);
+  }
+  timerRow.appendChild(cell);
+  ok('game-over dot rendered (both colors)');
+
+  out('\nSMOKE OK', 'ok');
+} catch (e) {
+  fail('exception: ' + e.message);
+  fail(e.stack);
+}
+</script>
+</body>
+</html>

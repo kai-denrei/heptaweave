@@ -1,0 +1,60 @@
+<!doctype html><html><head>
+<meta charset="utf-8">
+<style>html,body{margin:0;padding:0;background:#f6f1e7;font-family:ui-monospace,monospace;font-size:11px;color:#888}</style>
+</head><body>
+<iframe id="frame" src="../index.html?v=bcbbaaca" style="width:420px;height:920px;border:0;display:block"></iframe>
+<pre id="log" style="padding:6px;margin:0;white-space:pre-wrap"></pre>
+<script>
+const log = document.getElementById('log');
+function out(m) { log.textContent += m + '\n'; }
+window.addEventListener('load', () => {
+  const f = document.getElementById('frame');
+  // Wait for the iframe app to bootstrap.
+  setTimeout(async () => {
+    const doc = f.contentDocument;
+    // Click ⧖
+    const btn = doc.querySelector('.mode-btn[data-mode="TIMED"]');
+    btn.click();
+    out('clicked ⧖');
+    await new Promise(r => setTimeout(r, 800));
+
+    // Inspect choices — first round, tier 0, 2 choices.
+    let choices = doc.querySelectorAll('.choice-tile');
+    out('round 1 choices: ' + choices.length);
+    if (choices.length === 0) { out('NO CHOICES'); return; }
+
+    // Read the target via window-leak we'll set below — actually let's set up
+    // a probe by wrapping the global window inside the iframe.
+    // The store has `round.target`; but the smoke-harness doesn't have direct
+    // access. Click each tile and see which lights up green/red.
+    // Easier: just probe what's in DOM. The target is embedded inside one of
+    // the choice SVGs via a deterministic seed — but never as a Latin number.
+    // So we click ONE and observe — if wrong, mark error and go again.
+
+    // Trick: read the iframe's localStorage to check; the target isn't there.
+    // Cleanest is to instrument via a global the app exposes.
+    // For now: click choice[0]. If wrong, the wrong glow + shake should fire.
+    choices[0].click();
+    out('clicked choice 0');
+    await new Promise(r => setTimeout(r, 900));
+    // Did it advance? choices array would have been replaced.
+    choices = doc.querySelectorAll('.choice-tile');
+    out('round 2 choices: ' + choices.length);
+    // Check score row has at least one mark.
+    const scoreSvg = doc.querySelector('#scoreRow svg');
+    out('score row svg present: ' + !!scoreSvg + ' paths=' + (scoreSvg ? scoreSvg.querySelectorAll('path').length : 0));
+
+    // Click choice[0] in round 2 too.
+    if (choices.length) {
+      choices[0].click();
+      await new Promise(r => setTimeout(r, 900));
+    }
+
+    // Final score / phase
+    const play = doc.querySelector('#screenPlay');
+    const gameover = doc.querySelector('#screenGameOver');
+    out('play hidden=' + play.hidden + ' gameover hidden=' + gameover.hidden);
+    out('done');
+  }, 800);
+});
+</script></body></html>
