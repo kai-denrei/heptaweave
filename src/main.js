@@ -263,6 +263,26 @@ function pickLayout(count) {
   return LAYOUT_PRESETS[count] ?? LAYOUT_PRESETS[7];
 }
 
+// User-locked tuning from scripts/tune.html session 2026-05-20. These are the
+// heptaweave-specific defaults; numeralV2 itself stays canonical (matches the
+// original compositeFlow.js). localStorage.heptaweave.tune still wins, so the
+// tune page remains usable to re-dial these later.
+const HEPTAWEAVE_CHOICE_TUNE = {
+  gapAngleDeg: 82,
+  gapWidthDeg: 46,
+  bulgeScale: 0.45,
+  lobeBulgeOutward: 0.44,
+  lobeBulgeInward: 0.38,
+  digitGap: 0.04,
+  markSpread: 0.8,
+  dotSizeFactor: 0.33,
+  dashWidthFactor: 0.03,
+  haloOpacity: 0.85,
+  liquidWobble: 0.5,
+  liquidDetail: 0.13,
+  vbPadFrac: 0,
+};
+
 function renderChoices(choiceNumbers, onPick) {
   const s = store.get();
   els.choices.className = 'choices cN-' + choiceNumbers.length;
@@ -280,9 +300,11 @@ function renderChoices(choiceNumbers, onPick) {
   const maxTileFromBox = Math.min(mid.width * 0.45, mid.height * 0.30);
   if (tileSize > maxTileFromBox) tileSize = Math.max(140, Math.round(maxTileFromBox));
   const tileR = tileSize / 2;
-  // numeralV2 with vbPadFrac=0.10 returns an SVG sized at internal * 1.20.
-  // Pick internal so the SVG renders at exactly tileSize.
-  const v2Internal = Math.round(tileSize / 1.20);
+  // Pick internal size so the rendered SVG (= internal * (1 + 2*vbPadFrac))
+  // matches tileSize exactly. Respect any tuned vbPadFrac from localStorage.
+  const tune = loadTune();
+  const effPad = (tune.vbPadFrac ?? HEPTAWEAVE_CHOICE_TUNE.vbPadFrac ?? 0.10);
+  const v2Internal = Math.round(tileSize / (1 + 2 * effPad));
 
   // Available extent for tile centers. Slot offsets (-1..+1) map onto this.
   const halfW = Math.max(0, cx - tileR - 4);
@@ -308,15 +330,13 @@ function renderChoices(choiceNumbers, onPick) {
     tile.style.top  = `${py - tileR}px`;
 
     // Don't expose the numeric answer in any attribute or textContent.
-    // Tuning UI (scripts/tune.html) writes overrides to localStorage; merge
-    // them on top of the choice-tile defaults so the user can dial in the
-    // look from their phone and see it persist into the game.
-    const tune = loadTune();
+    // Layered defaults: numeralV2 canonical → heptaweave tuned values →
+    // localStorage overrides from scripts/tune.html.
     const svg = renderHeptapodNumeralV2({
       number: n,
       size: v2Internal,
       seed: s.rng.seed ^ (n * 7919),
-      vbPadFrac: 0.10,
+      ...HEPTAWEAVE_CHOICE_TUNE,
       ...tune,
     });
     tile.appendChild(svg);

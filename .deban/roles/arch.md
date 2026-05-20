@@ -20,6 +20,9 @@ on parent projects.
 | 2026-05-20 | RNG = mulberry32 from heptacipher (more useful API: int, range, gauss, shuffle). | Single RNG everywhere lets every render be deterministic per round seed. | [[dev]] |
 | 2026-05-20 | State machine in one module (`src/game/state.js`), pure-function transitions. Render loop subscribes to state changes. | Tiny project; a big framework would be overkill. | [[dev]] |
 | 2026-05-20 | Cistercian rendered into the same SVG as the morse choices but in different element groups; both reuse the same filter defs. | Avoids two filter pipelines. | [[design]] |
+| 2026-05-20 | Single canonical heptacipher renderer: `src/heptacipher/numeralV2.js`. Verbatim port of `renderHeptapodNumeralV2` from heptapod-logograms/compositeFlow.js, minus the draw-mask animation. Choice-tile customization happens via parameters at the call site, NOT by forking the implementation. | A/B "lobes-only vs full mini" was a divergence from the canonical design that lost the original's tuning. The user explicitly preferred the original balance. | [[dev]] [[design]] |
+| 2026-05-20 | Heptaweave-specific knobs (per-project visual tune) layered via `HEPTAWEAVE_CHOICE_TUNE` in main.js, spread on top of canonical V2 defaults. localStorage.heptaweave.tune wins over both, so the slider page can override at runtime. | Layered defaults: canonical (renderer) → project (main.js) → session (localStorage). Each layer is overridable without touching the one below. | [[dev]] |
+| 2026-05-20 | Choice layout is per-count slot presets (LAYOUT_PRESETS) with normalized offsets from play-mid center, plus ±2% gaussian jitter. NOT an even-angle orbit. | Mockup shows organic quincunx (4 corners + bottom-center for 5 choices). Even-angle distribution looked too mechanical. | [[design]] |
 
 ### Bit-milestone difficulty (canonical table)
 Tier = `bitlength(score)`. All three levers advance per tier.
@@ -55,9 +58,14 @@ src/
     cistercianInk.js      — render segments as brushStroke paths into an SVG
   heptacipher/
     morsePatterns.js      — canonical PATTERNS table (digit → 5 marks)
-    morseDigitArc.js      — verbatim from heptacipher (lobe + 5 marks)
-    choiceA.js            — lobes-only renderer (circle IS the ensō, 4 lobes)
-    choiceB.js            — full mini renderer (inner ensō + 4 × 5 marks)
+    morseDigitArc.js      — verbatim from heptacipher (lobe + 5 marks),
+                            plus dotSizeFactor/dashWidthFactor/dashMinWidth
+                            params so tuning can adjust mark sizing without
+                            mutating the canonical formulas
+    numeralV2.js          — single renderer: verbatim port of compositeFlow's
+                            renderHeptapodNumeralV2, minus draw-mask animation.
+                            Adds tuning overrides + disableJitter for the
+                            tune UI's reproducible preview.
   render/
     binaryScore.js        — top-left binary row in brush marks
     timerRing.js          — shrinking circular timer for ⧖ mode
@@ -84,8 +92,11 @@ src/
 <!-- APPEND ONLY. Never delete. -->
 | Date | What was tried | Why it failed / was rejected |
 |---|---|---|
+| 2026-05-20 | Ship two parallel choice renderers (A = lobes-only, B = full mini) with a long-press A/B toggle on landing for playtest comparison. | User feedback after seeing real renders: "the balance of the original was more pleasant." The A variant was a divergence (all-outward lobes, gap at top), not a legitimate alternative design. Retired both; canonical V2 is now the only renderer. The A/B toggle UI is hidden but the localStorage key + landing region are still wired for future use. |
 
 ## Lessons
+- **Heptaweave-specific visual choices belong at the call site (main.js) or in a project-tune layer, never as forks of the canonical renderer.** — from the choiceA/choiceB retirement, 2026-05-20. When a fork sneaks in, every later change costs double (apply to both, diff against canonical, lose the original's tuning). Architecturally enforce this by keeping the canonical renderer's signature flexible (lots of optional params with sensible defaults).
+- **A localStorage-backed tuning layer between the renderer and the call site is a clean third tier.** — same session. Lets the user dial in values WITHOUT a code change, while keeping the canonical defaults intact for any consumer that doesn't opt in. See [[dev]] Lessons for the methodology note.
 
 ## Open Questions
 - [ ] Single SVG vs multiple SVGs for the play screen — single is easier for filter sharing, multiple is easier for animating individual choices. Default v1: one SVG for Cistercian, one per choice circle (HTML positioning around them).  — owner: claude-on-kainode — since: 2026-05-20
@@ -100,4 +111,5 @@ Blocked by:
 Feeds into: [[dev]]
 
 ## Session Log
+- 2026-05-20 (tune session) — Replaced A/B renderer split with a single canonical `numeralV2.js` port + a project-tune layer (`HEPTAWEAVE_CHOICE_TUNE`) + an optional localStorage override layer for the slider page. Choice layout switched to per-count organic quincunx presets. Two architecture lessons added.
 - 2026-05-20 — Architecture seeded; difficulty table canonical.
