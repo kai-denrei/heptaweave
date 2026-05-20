@@ -75,8 +75,10 @@ function gatherEls() {
     timerWrap:  document.getElementById('timerRingWrap'),
     stage:      document.getElementById('cistercianStage'),
     choices:    document.getElementById('choices'),
-    bigBinary:  document.getElementById('bigBinary'),
-    gameDot:    document.getElementById('gameOverDot'),
+    bigBinary:       document.getElementById('bigBinary'),
+    bigHeptacipher:  document.getElementById('bigHeptacipher'),
+    bigCistercian:   document.getElementById('bigCistercian'),
+    gameDot:         document.getElementById('gameOverDot'),
   };
 }
 
@@ -149,14 +151,64 @@ function renderScoreRow({ animateNewBit = false } = {}) {
 function renderBigBinary(score) {
   const { groupEl, width } = renderBinaryScore({
     score,
-    markSize: 44,
+    markSize: 34,
     rng: createRng((score + 17) * 31),
   });
   const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', `-22 -32 ${width + 44} 64`);
+  svg.setAttribute('viewBox', `-22 -24 ${width + 44} 48`);
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   svg.appendChild(groupEl);
   els.bigBinary.replaceChildren(svg);
+}
+
+// Show the same score as a heptacipher logogram on the game-over screen.
+function renderBigHeptacipher(score) {
+  const tune = loadTune();
+  const internalSize = 220;
+  const svg = renderHeptapodNumeralV2({
+    number: Math.max(0, Math.floor(score)) & 0xff,
+    size: internalSize,
+    seed: 0xfeedface ^ (score + 1) * 2654435761,
+    ...HEPTAWEAVE_CHOICE_TUNE,
+    ...tune,
+  });
+  els.bigHeptacipher.replaceChildren(svg);
+}
+
+// Show the same score as a Cistercian numeral on the game-over screen.
+function renderBigCistercian(score) {
+  const n = Math.max(0, Math.floor(score)) & 0xff;
+  const size = 220;
+  const rng = createRng((n + 1) * 991);
+  const { segmentPaths } = renderCistercianInk({
+    number: n,
+    size,
+    rng: createRng((n + 1) * 991),
+    padFrac: 0.10,
+    strokeWidthFrac: 0.022,
+  });
+  const filters = buildInkFilters({
+    idTag: 'csc-go-' + ((n * 31) & 0xfffff).toString(36),
+    size,
+    bleedScale: 1.2,
+    haloOpacity: 0.95,
+    liquidWobble: 6,
+    liquidDetail: 0.08,
+    rng,
+  });
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  svg.style.overflow = 'visible';
+  const defs = document.createElementNS(SVG_NS, 'defs');
+  defs.innerHTML = filters.defs;
+  svg.appendChild(defs);
+  const inner = `<g fill="currentColor">${segmentPaths.map(d => `<path d="${d}"/>`).join('')}</g>`;
+  svg.insertAdjacentHTML('beforeend', `
+    <g filter="url(#${filters.farId})"   opacity="${filters.farOpacity}"  fill="currentColor">${inner}</g>
+    <g filter="url(#${filters.nearId})"  opacity="${filters.nearOpacity}" fill="currentColor">${inner}</g>
+    <g filter="url(#${filters.crispId})" opacity="0.92"                   fill="currentColor">${inner}</g>
+  `);
+  els.bigCistercian.replaceChildren(svg);
 }
 
 // ============================================================================
@@ -210,57 +262,35 @@ function renderCistercianStage(number, seedSalt = 1) {
 }
 
 // ============================================================================
-// Choice tiles — organic quincunx layout
+// Choice tiles — cardinal-anchored layout
 // ============================================================================
-// Per-count tile size and position presets. Positions are normalized offsets
-// from play-mid center, where (-1, -1) is the top-left of the available area
-// and (+1, +1) is the bottom-right. The presets approximate the mockup's
-// uneven quincunx feel — choices nestle close to the central Cistercian, not
-// forced onto a perfect circle.
-const LAYOUT_PRESETS = {
-  2: { tile: 240, slots: [
-    { ox: -0.55, oy:  0.00 }, // left
-    { ox: +0.55, oy:  0.00 }, // right
-  ]},
-  3: { tile: 230, slots: [
-    { ox:  0.00, oy: -0.50 }, // top
-    { ox: -0.55, oy:  0.25 }, // bottom-left
-    { ox: +0.55, oy:  0.25 }, // bottom-right
-  ]},
-  4: { tile: 215, slots: [
-    { ox: -0.50, oy: -0.35 }, // top-left
-    { ox: +0.50, oy: -0.35 }, // top-right
-    { ox: -0.50, oy:  0.35 }, // bottom-left
-    { ox: +0.50, oy:  0.35 }, // bottom-right
-  ]},
-  5: { tile: 200, slots: [
-    { ox: -0.45, oy: -0.38 }, // top-left
-    { ox: +0.45, oy: -0.38 }, // top-right
-    { ox: -0.55, oy:  0.08 }, // mid-left
-    { ox: +0.55, oy:  0.08 }, // mid-right
-    { ox:  0.00, oy:  0.52 }, // bottom-center
-  ]},
-  6: { tile: 185, slots: [
-    { ox: -0.50, oy: -0.40 }, // top-left
-    { ox: +0.50, oy: -0.40 }, // top-right
-    { ox: -0.58, oy:  0.05 }, // mid-left
-    { ox: +0.58, oy:  0.05 }, // mid-right
-    { ox: -0.28, oy:  0.50 }, // bottom-left
-    { ox: +0.28, oy:  0.50 }, // bottom-right
-  ]},
-  7: { tile: 175, slots: [
-    { ox:  0.00, oy: -0.55 }, // top-center
-    { ox: -0.52, oy: -0.30 }, // upper-left
-    { ox: +0.52, oy: -0.30 }, // upper-right
-    { ox: -0.60, oy:  0.15 }, // mid-left
-    { ox: +0.60, oy:  0.15 }, // mid-right
-    { ox: -0.30, oy:  0.55 }, // lower-left
-    { ox: +0.30, oy:  0.55 }, // lower-right
-  ]},
+// Each tile sits at one of 8 compass directions from the Cistercian, on an
+// orbit just outside the Cistercian's radius. Tile size is computed at render
+// time so the worst-fitting tile (typically E/W on a phone) still has a
+// clear gap from the Cistercian. No overlap on the prompt.
+const CARDINAL_DIR = {
+  N:  { ax:  0, ay: -1 },
+  NE: { ax:  1, ay: -1 },
+  E:  { ax:  1, ay:  0 },
+  SE: { ax:  1, ay:  1 },
+  S:  { ax:  0, ay:  1 },
+  SW: { ax: -1, ay:  1 },
+  W:  { ax: -1, ay:  0 },
+  NW: { ax: -1, ay: -1 },
 };
 
-function pickLayout(count) {
-  return LAYOUT_PRESETS[count] ?? LAYOUT_PRESETS[7];
+// Which cardinal positions to use per choice count. Picked for visual balance.
+const CARDINAL_LAYOUT = {
+  2: ['W', 'E'],
+  3: ['N', 'SW', 'SE'],
+  4: ['NW', 'NE', 'SW', 'SE'],
+  5: ['N', 'NW', 'NE', 'SW', 'SE'],
+  6: ['NW', 'NE', 'W', 'E', 'SW', 'SE'],
+  7: ['N', 'NE', 'E', 'SE', 'SW', 'W', 'NW'],  // skip S
+};
+
+function cardinalPositions(count) {
+  return CARDINAL_LAYOUT[count] ?? CARDINAL_LAYOUT[7];
 }
 
 // User-locked tuning from scripts/tune.html session 2026-05-20. These are the
@@ -292,34 +322,62 @@ function renderChoices(choiceNumbers, onPick) {
   const cx = mid.width / 2;
   const cy = mid.height / 2;
   const N = choiceNumbers.length;
-  const preset = pickLayout(N);
+  const positions = cardinalPositions(N);
+  const cistRect = els.stage.getBoundingClientRect();
+  const cistercianR = (Math.min(cistRect.width, cistRect.height) || mid.width * 0.40) / 2;
+  const margin = 4;
+  const gap = 6; // air between cistercian rim and tile rim
 
-  // Scale tile so it fits the viewport. The preset's `tile` is the desired
-  // size; on small phones it may need to shrink.
-  let tileSize = preset.tile;
-  const maxTileFromBox = Math.min(mid.width * 0.45, mid.height * 0.30);
-  if (tileSize > maxTileFromBox) tileSize = Math.max(140, Math.round(maxTileFromBox));
+  // For each cardinal direction, find the largest tile that fits:
+  // - tile inner edge ≥ cistercian rim + gap (no overlap)
+  // - tile outer edge ≤ container edge - margin (on-screen)
+  // Use the most-constrained position to set ONE tile size for the whole set
+  // so tiles are visually consistent.
+  function maxTileForDir(ax, ay) {
+    const norm = Math.hypot(ax, ay) || 1;
+    const ux = ax / norm, uy = ay / norm;
+    // Solve: tile center at (cx + r*ux, cy + r*uy), where r = orbit.
+    // Constraint: tile must not overlap cistercian → r ≥ cistercianR + tileR + gap.
+    // Constraint: tile must fit on screen along ux direction →
+    //   |r*ux| + tileR ≤ (ux>0 ? cx : (mid.width - cx)) - margin  [horizontal]
+    //   and similar vertical
+    // Equivalently for symmetric center:
+    //   r*|ux| + tileR ≤ cx - margin  (treating cx ≈ mid.width / 2)
+    //   r*|uy| + tileR ≤ cy - margin
+    // Substituting r = cistercianR + tileR + gap:
+    //   (cistercianR + tileR + gap) * |ux| + tileR ≤ cx - margin
+    //   tileR * (1 + |ux|) ≤ cx - margin - (cistercianR + gap) * |ux|
+    //   tileR ≤ (cx - margin - (cistercianR + gap) * |ux|) / (1 + |ux|)
+    const absUx = Math.abs(ux), absUy = Math.abs(uy);
+    const tileR_x = (cx - margin - (cistercianR + gap) * absUx) / (1 + absUx);
+    const tileR_y = (cy - margin - (cistercianR + gap) * absUy) / (1 + absUy);
+    return 2 * Math.min(tileR_x, tileR_y);
+  }
+
+  // Smallest of all directions = shared tile size.
+  let tileSize = Infinity;
+  for (const key of positions) {
+    const { ax, ay } = CARDINAL_DIR[key];
+    tileSize = Math.min(tileSize, maxTileForDir(ax, ay));
+  }
+  tileSize = Math.floor(Math.max(80, Math.min(220, tileSize)));
   const tileR = tileSize / 2;
-  // Pick internal size so the rendered SVG (= internal * (1 + 2*vbPadFrac))
-  // matches tileSize exactly. Respect any tuned vbPadFrac from localStorage.
+
+  // numeralV2 internal size such that rendered SVG width = tileSize.
   const tune = loadTune();
   const effPad = (tune.vbPadFrac ?? HEPTAWEAVE_CHOICE_TUNE.vbPadFrac ?? 0.10);
   const v2Internal = Math.round(tileSize / (1 + 2 * effPad));
 
-  // Available extent for tile centers. Slot offsets (-1..+1) map onto this.
-  const halfW = Math.max(0, cx - tileR - 4);
-  const halfH = Math.max(0, cy - tileR - 4);
-
-  // Per-round angular/positional jitter for organic feel.
-  const jitterRng = createRng((s.rng.seed ^ 0xa11ce) >>> 0);
+  // Orbit radius = cistercian rim + half-tile + gap (no overlap).
+  const orbit = cistercianR + tileR + gap;
 
   for (let i = 0; i < N; i++) {
     const n = choiceNumbers[i];
-    const slot = preset.slots[i];
-    const jx = jitterRng.gauss(0, 0.018);
-    const jy = jitterRng.gauss(0, 0.018);
-    const px = cx + (slot.ox + jx) * halfW;
-    const py = cy + (slot.oy + jy) * halfH;
+    const dir = CARDINAL_DIR[positions[i]];
+    const norm = Math.hypot(dir.ax, dir.ay) || 1;
+    const ux = dir.ax / norm, uy = dir.ay / norm;
+    const px = cx + ux * orbit;
+    const py = cy + uy * orbit;
 
     const tile = document.createElement('button');
     tile.className = 'choice-tile';
@@ -330,8 +388,6 @@ function renderChoices(choiceNumbers, onPick) {
     tile.style.top  = `${py - tileR}px`;
 
     // Don't expose the numeric answer in any attribute or textContent.
-    // Layered defaults: numeralV2 canonical → heptaweave tuned values →
-    // localStorage overrides from scripts/tune.html.
     const svg = renderHeptapodNumeralV2({
       number: n,
       size: v2Internal,
@@ -379,6 +435,8 @@ function showGameOver({ mode, score, errors }) {
   store.set({ best });
 
   renderBigBinary(score);
+  renderBigHeptacipher(score);
+  renderBigCistercian(score);
   const clean = isCleanResult({ mode, errors });
   const dotPath = renderGameOverDot({
     clean,

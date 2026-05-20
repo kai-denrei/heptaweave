@@ -1,0 +1,47 @@
+<!doctype html><html><head>
+<meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;width:420px;height:920px;overflow:hidden;background:#f6f1e7}
+  iframe{display:block;width:420px;height:920px;border:0}
+</style>
+</head>
+<body>
+<iframe id="f" src="../index.html"></iframe>
+<script>
+  const f = document.getElementById('f');
+  f.addEventListener('load', () => {
+    setTimeout(async () => {
+      const doc = f.contentDocument;
+      const win = f.contentWindow;
+      // Click TIMED to enter play.
+      const btn = doc.querySelector('.mode-btn[data-mode="TIMED"]');
+      if (btn) btn.click();
+      await new Promise(r => setTimeout(r, 400));
+
+      // Look for module-scope showGameOver — it's not exposed. Use the
+      // public APIs we can reach: simulate a few rounds by force-clicking
+      // the first available correct choice. Easier: dispatch a fake
+      // timeout to fire endRun. The cleanest path is to directly poke the
+      // internals via querying the choice tiles and clicking them, but
+      // we don't know which one is correct without the target leaking.
+      //
+      // Trick: tap a choice; if marked '.wrong', the ⧖ mode keeps going.
+      // After a few wrongs the timer hits 0 → game over.
+      // To speed this up, dispatch repeated clicks on the first choice
+      // tile across rounds; we'll accumulate the score and errors and
+      // eventually game-over.
+      let i = 0;
+      while (i < 30) {
+        const tile = doc.querySelector('.choice-tile');
+        if (!tile) break;
+        tile.click();
+        await new Promise(r => setTimeout(r, 760));
+        // Detect game-over screen visible
+        const go = doc.getElementById('screenGameOver');
+        if (go && !go.hidden) break;
+        i++;
+      }
+    }, 200);
+  });
+</script>
+</body></html>
