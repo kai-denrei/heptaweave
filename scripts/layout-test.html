@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { background:#f6f1e7; margin:0; padding:24px; font:12px ui-monospace,monospace; color:#161310; }
+  h2 { font:11px ui-monospace,monospace; color:#888; margin:24px 0 8px; }
+  .row { display:flex; gap:18px; flex-wrap:wrap; }
+  .phone {
+    position: relative;
+    width: 390px; height: 760px;
+    background: #fbf7ee;
+    border: 1px solid #ddd;
+    overflow: hidden;
+  }
+  .phone .label-bar {
+    position: absolute; top: 4px; left: 8px;
+    color: #888; font-size: 10px; font-family: ui-monospace, monospace;
+    pointer-events: none;
+  }
+  .cistercian-stage {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(60vw, 340px);
+    aspect-ratio: 1;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .choices {
+    position: absolute; inset: 0;
+    z-index: 1;
+  }
+  .choice-tile {
+    position: absolute;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #161310;
+  }
+  .choice-tile svg { display: block; }
+  .cistercian-stage svg { width: 100%; height: 100%; color: #161310; }
+</style>
+</head>
+<body>
+<h2>Layouts per choice count (390×760 phone simulation)</h2>
+<div class="row" id="phoneRow"></div>
+
+<script type="module">
+  const { renderHeptapodNumeralV2 } = await import('../src/heptacipher/numeralV2.js');
+  const { renderCistercianInk } = await import('../src/cistercian/cistercianInk.js');
+  const { createRng } = await import('../src/util/rng.js');
+  const { buildInkFilters } = await import('../src/ink/filters.js');
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  // Copy of LAYOUT_PRESETS from main.js
+  const LAYOUT_PRESETS = {
+    2: { tile: 240, slots: [
+      { ox: -0.55, oy:  0.00 },
+      { ox: +0.55, oy:  0.00 },
+    ]},
+    3: { tile: 230, slots: [
+      { ox:  0.00, oy: -0.50 },
+      { ox: -0.55, oy:  0.25 },
+      { ox: +0.55, oy:  0.25 },
+    ]},
+    4: { tile: 215, slots: [
+      { ox: -0.50, oy: -0.35 },
+      { ox: +0.50, oy: -0.35 },
+      { ox: -0.50, oy:  0.35 },
+      { ox: +0.50, oy:  0.35 },
+    ]},
+    5: { tile: 200, slots: [
+      { ox: -0.45, oy: -0.38 },
+      { ox: +0.45, oy: -0.38 },
+      { ox: -0.55, oy:  0.08 },
+      { ox: +0.55, oy:  0.08 },
+      { ox:  0.00, oy:  0.52 },
+    ]},
+    6: { tile: 185, slots: [
+      { ox: -0.50, oy: -0.40 },
+      { ox: +0.50, oy: -0.40 },
+      { ox: -0.58, oy:  0.05 },
+      { ox: +0.58, oy:  0.05 },
+      { ox: -0.28, oy:  0.50 },
+      { ox: +0.28, oy:  0.50 },
+    ]},
+    7: { tile: 175, slots: [
+      { ox:  0.00, oy: -0.55 },
+      { ox: -0.52, oy: -0.30 },
+      { ox: +0.52, oy: -0.30 },
+      { ox: -0.60, oy:  0.15 },
+      { ox: +0.60, oy:  0.15 },
+      { ox: -0.30, oy:  0.55 },
+      { ox: +0.30, oy:  0.55 },
+    ]},
+  };
+
+  function buildCistercianStage(targetNum, parent) {
+    const stage = document.createElement('div');
+    stage.className = 'cistercian-stage';
+    const size = 234; // min(60vw, 340) on 390-wide
+    const rng = createRng((targetNum + 1) * 17);
+    const { segmentPaths } = renderCistercianInk({
+      number: targetNum, size, rng: createRng((targetNum + 1) * 17),
+      padFrac: 0.10, strokeWidthFrac: 0.022,
+    });
+    const filters = buildInkFilters({
+      idTag: 'csc' + targetNum.toString(36),
+      size, bleedScale: 1.2, haloOpacity: 0.95,
+      liquidWobble: 6, liquidDetail: 0.08, rng,
+    });
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    svg.style.overflow = 'visible';
+    const defs = document.createElementNS(SVG_NS, 'defs');
+    defs.innerHTML = filters.defs;
+    svg.appendChild(defs);
+    const inner = `<g fill="currentColor">${segmentPaths.map(d => `<path d="${d}"/>`).join('')}</g>`;
+    svg.insertAdjacentHTML('beforeend', `
+      <g filter="url(#${filters.farId})"   opacity="${filters.farOpacity}"  fill="currentColor">${inner}</g>
+      <g filter="url(#${filters.nearId})"  opacity="${filters.nearOpacity}" fill="currentColor">${inner}</g>
+      <g filter="url(#${filters.crispId})" opacity="0.92"                   fill="currentColor">${inner}</g>
+    `);
+    stage.appendChild(svg);
+    parent.appendChild(stage);
+  }
+
+  function buildChoices(N, parent, seed = 4242) {
+    const choicesDiv = document.createElement('div');
+    choicesDiv.className = 'choices';
+    parent.appendChild(choicesDiv);
+
+    const preset = LAYOUT_PRESETS[N];
+    const mid = parent.getBoundingClientRect();
+    const cx = mid.width / 2;
+    const cy = mid.height / 2;
+
+    let tileSize = preset.tile;
+    const maxTileFromBox = Math.min(mid.width * 0.45, mid.height * 0.30);
+    if (tileSize > maxTileFromBox) tileSize = Math.max(140, Math.round(maxTileFromBox));
+    const tileR = tileSize / 2;
+    const v2Internal = Math.round(tileSize / 1.20);
+
+    const halfW = Math.max(0, cx - tileR - 4);
+    const halfH = Math.max(0, cy - tileR - 4);
+
+    // Pseudo-random sample numbers
+    const rng = createRng(seed);
+    const numbers = [];
+    for (let i = 0; i < N; i++) numbers.push(rng.int(0, 9999));
+
+    for (let i = 0; i < N; i++) {
+      const slot = preset.slots[i];
+      const px = cx + slot.ox * halfW;
+      const py = cy + slot.oy * halfH;
+      const tile = document.createElement('div');
+      tile.className = 'choice-tile';
+      tile.style.width = `${tileSize}px`;
+      tile.style.height = `${tileSize}px`;
+      tile.style.left = `${px - tileR}px`;
+      tile.style.top  = `${py - tileR}px`;
+      const svg = renderHeptapodNumeralV2({
+        number: numbers[i],
+        size: v2Internal,
+        seed: seed ^ (numbers[i] * 7919),
+        vbPadFrac: 0.10,
+      });
+      tile.appendChild(svg);
+      choicesDiv.appendChild(tile);
+    }
+  }
+
+  const row = document.getElementById('phoneRow');
+  // Render one "phone" per choice count
+  for (const N of [2, 3, 4, 5, 6, 7]) {
+    const phone = document.createElement('div');
+    phone.className = 'phone';
+    const lbl = document.createElement('div');
+    lbl.className = 'label-bar';
+    lbl.textContent = `N=${N}`;
+    phone.appendChild(lbl);
+    buildCistercianStage(4321 + N * 111, phone);
+    row.appendChild(phone);
+    // Layout requires bounds, so defer choices to after layout settles.
+    setTimeout(() => buildChoices(N, phone, 4321 + N * 1000), 50);
+  }
+</script>
+</body>
+</html>

@@ -226,7 +226,7 @@ export function morseDigitArcAppendage({
       // separated. Smaller than the previous pass (0.30) — the user wants
       // clear gaps between marks within a digit, e.g. ". - . - ." not
       // ".-.-." merged into a blob.
-      const dotSize = stride * 0.26 * Math.max(0.6, scaleJ);
+      const dotSize = stride * 0.20 * Math.max(0.6, scaleJ);
       const dotRot = Math.atan2(samp.ty, samp.tx) + rng.range(-0.3, 0.3);
       const dotBlob = irregularBlob({
         cx: samp.x,
@@ -256,10 +256,9 @@ export function morseDigitArcAppendage({
         { x: samp.x + dx * half * 0.2, y: samp.y + dy * half * 0.2 },
         { x: samp.x + dx * half, y: samp.y + dy * half },
       ];
-      // Dash thickness — bumped from the canonical 0.04 to 0.08 so dashes
-      // are clearly visible at choice-tile sizes (240px) without losing the
-      // dot-vs-dash distinction.
-      const dashMaxW = Math.max(1.1, stride * 0.08);
+      // Slimmer dashes — gives the line marks their own identity vs. the
+      // (now-thicker) dot marks.
+      const dashMaxW = Math.max(0.6, stride * 0.04);
       const d = brushStroke({
         controlPoints,
         widthProfile: lensProfile,

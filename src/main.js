@@ -11,8 +11,7 @@
 
 import { createRng } from './util/rng.js';
 import { renderCistercianInk } from './cistercian/cistercianInk.js';
-import { renderChoiceA } from './heptacipher/choiceA.js';
-import { renderChoiceB } from './heptacipher/choiceB.js';
+import { renderHeptapodNumeralV2 } from './heptacipher/numeralV2.js';
 import { renderBinaryScore } from './render/binaryScore.js';
 import { createTimerRing } from './render/timerRing.js';
 import { renderGameOverDot } from './render/gameOverDot.js';
@@ -196,13 +195,57 @@ function renderCistercianStage(number, seedSalt = 1) {
 }
 
 // ============================================================================
-// Choice tiles — orbital layout around the Cistercian
+// Choice tiles — organic quincunx layout
 // ============================================================================
-// Per-count tile size. Bigger when there are fewer choices.
-const TILE_SIZE_BY_COUNT = { 2: 240, 3: 240, 4: 220, 5: 210, 6: 190, 7: 180 };
+// Per-count tile size and position presets. Positions are normalized offsets
+// from play-mid center, where (-1, -1) is the top-left of the available area
+// and (+1, +1) is the bottom-right. The presets approximate the mockup's
+// uneven quincunx feel — choices nestle close to the central Cistercian, not
+// forced onto a perfect circle.
+const LAYOUT_PRESETS = {
+  2: { tile: 240, slots: [
+    { ox: -0.55, oy:  0.00 }, // left
+    { ox: +0.55, oy:  0.00 }, // right
+  ]},
+  3: { tile: 230, slots: [
+    { ox:  0.00, oy: -0.50 }, // top
+    { ox: -0.55, oy:  0.25 }, // bottom-left
+    { ox: +0.55, oy:  0.25 }, // bottom-right
+  ]},
+  4: { tile: 215, slots: [
+    { ox: -0.50, oy: -0.35 }, // top-left
+    { ox: +0.50, oy: -0.35 }, // top-right
+    { ox: -0.50, oy:  0.35 }, // bottom-left
+    { ox: +0.50, oy:  0.35 }, // bottom-right
+  ]},
+  5: { tile: 200, slots: [
+    { ox: -0.45, oy: -0.38 }, // top-left
+    { ox: +0.45, oy: -0.38 }, // top-right
+    { ox: -0.55, oy:  0.08 }, // mid-left
+    { ox: +0.55, oy:  0.08 }, // mid-right
+    { ox:  0.00, oy:  0.52 }, // bottom-center
+  ]},
+  6: { tile: 185, slots: [
+    { ox: -0.50, oy: -0.40 }, // top-left
+    { ox: +0.50, oy: -0.40 }, // top-right
+    { ox: -0.58, oy:  0.05 }, // mid-left
+    { ox: +0.58, oy:  0.05 }, // mid-right
+    { ox: -0.28, oy:  0.50 }, // bottom-left
+    { ox: +0.28, oy:  0.50 }, // bottom-right
+  ]},
+  7: { tile: 175, slots: [
+    { ox:  0.00, oy: -0.55 }, // top-center
+    { ox: -0.52, oy: -0.30 }, // upper-left
+    { ox: +0.52, oy: -0.30 }, // upper-right
+    { ox: -0.60, oy:  0.15 }, // mid-left
+    { ox: +0.60, oy:  0.15 }, // mid-right
+    { ox: -0.30, oy:  0.55 }, // lower-left
+    { ox: +0.30, oy:  0.55 }, // lower-right
+  ]},
+};
 
-function pickTileSize(count) {
-  return TILE_SIZE_BY_COUNT[count] ?? 180;
+function pickLayout(count) {
+  return LAYOUT_PRESETS[count] ?? LAYOUT_PRESETS[7];
 }
 
 function renderChoices(choiceNumbers, onPick) {
@@ -214,29 +257,32 @@ function renderChoices(choiceNumbers, onPick) {
   const cx = mid.width / 2;
   const cy = mid.height / 2;
   const N = choiceNumbers.length;
+  const preset = pickLayout(N);
 
-  // Tile size from the lookup, but cap so tiles fit within the play-mid box.
-  const margin = 6;
-  let tileSize = pickTileSize(N);
-  const maxTileFromBox = Math.min(mid.width, mid.height) * 0.45;
-  tileSize = Math.min(tileSize, Math.max(140, maxTileFromBox));
+  // Scale tile so it fits the viewport. The preset's `tile` is the desired
+  // size; on small phones it may need to shrink.
+  let tileSize = preset.tile;
+  const maxTileFromBox = Math.min(mid.width * 0.45, mid.height * 0.30);
+  if (tileSize > maxTileFromBox) tileSize = Math.max(140, Math.round(maxTileFromBox));
   const tileR = tileSize / 2;
+  // numeralV2 with vbPadFrac=0.10 returns an SVG sized at internal * 1.20.
+  // Pick internal so the SVG renders at exactly tileSize.
+  const v2Internal = Math.round(tileSize / 1.20);
 
-  // Elliptical orbit: tile centers sit on an inner ellipse so each tile's outer
-  // edge just kisses the play-mid container's edge (minus margin). On a phone
-  // (taller than wide) this means vertical tiles reach further from center,
-  // which uses the available real estate instead of forcing a tight circle.
-  const rx = Math.max(tileR, cx - tileR - margin);
-  const ry = Math.max(tileR, cy - tileR - margin);
+  // Available extent for tile centers. Slot offsets (-1..+1) map onto this.
+  const halfW = Math.max(0, cx - tileR - 4);
+  const halfH = Math.max(0, cy - tileR - 4);
 
-  // Start angle: top (−90° = 12 o'clock), clockwise.
-  const startAngle = -Math.PI / 2;
+  // Per-round angular/positional jitter for organic feel.
+  const jitterRng = createRng((s.rng.seed ^ 0xa11ce) >>> 0);
 
   for (let i = 0; i < N; i++) {
     const n = choiceNumbers[i];
-    const angle = startAngle + (i / N) * 2 * Math.PI;
-    const px = cx + Math.cos(angle) * rx;
-    const py = cy + Math.sin(angle) * ry;
+    const slot = preset.slots[i];
+    const jx = jitterRng.gauss(0, 0.018);
+    const jy = jitterRng.gauss(0, 0.018);
+    const px = cx + (slot.ox + jx) * halfW;
+    const py = cy + (slot.oy + jy) * halfH;
 
     const tile = document.createElement('button');
     tile.className = 'choice-tile';
@@ -247,10 +293,15 @@ function renderChoices(choiceNumbers, onPick) {
     tile.style.top  = `${py - tileR}px`;
 
     // Don't expose the numeric answer in any attribute or textContent.
-    // The renderer below is the ONLY signal.
-    const svg = s.rendererPick === 'B'
-      ? renderChoiceB({ number: n, size: tileSize, seed: s.rng.seed ^ (n * 7919) })
-      : renderChoiceA({ number: n, size: tileSize, seed: s.rng.seed ^ (n * 7919) });
+    // vbPadFrac 0.10 (vs canonical 0.30) lets the glyph dominate the tile —
+    // chosen so choice glyphs read at a comparable visual scale to the
+    // Cistercian without breaking V2's other proportions.
+    const svg = renderHeptapodNumeralV2({
+      number: n,
+      size: v2Internal,
+      seed: s.rng.seed ^ (n * 7919),
+      vbPadFrac: 0.10,
+    });
     tile.appendChild(svg);
 
     tile.addEventListener('click', () => onPick(n, tile));

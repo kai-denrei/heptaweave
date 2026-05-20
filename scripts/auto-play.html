@@ -1,0 +1,20 @@
+<!doctype html><html><head>
+<meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;width:420px;height:920px;overflow:hidden;background:#f6f1e7}
+  iframe{display:block;width:420px;height:920px;border:0}
+</style>
+</head>
+<body>
+<iframe id="f" src="../index.html?v=29ae40eb"></iframe>
+<script>
+  const f = document.getElementById('f');
+  f.addEventListener('load', () => {
+    setTimeout(() => {
+      const doc = f.contentDocument;
+      const btn = doc.querySelector('.mode-btn[data-mode="TIMED"]');
+      if (btn) btn.click();
+    }, 200);
+  });
+</script>
+</body></html>
