@@ -21,9 +21,11 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 // Indexed [d1, d2, d3, d4] = [thousands, hundreds, tens, units].
 const DIGIT_LOBE_INWARD = [false, true, false, true];
 
-// Bulge per lobe — canonical heptacipher values.
-const LOBE_BULGE_OUTWARD = 0.50;
-const LOBE_BULGE_INWARD  = 0.32;
+// Bulge per lobe. Outward lobes bulge away from center; inward lobes dive
+// inside the ring. We use a stronger inward bulge than the canonical 0.32
+// so the inside lobes are clearly visible at choice-tile sizes.
+const LOBE_BULGE_OUTWARD = 0.55;
+const LOBE_BULGE_INWARD  = 0.45;
 
 // Spacing along the body arc.
 const LEAD_GAP  = 0.05;
@@ -59,11 +61,13 @@ export function renderChoiceA({ number, size = 200, seed = 0 }) {
   const radius = size * 0.26;
 
   // ENSO ----------------------------------------------------------------
-  // gap centered at 135° (bottom-left in SVG coords — 0°=+X, 90°=+Y/down).
-  // This puts the wet-drop / brush-landing notch in the bottom-left quadrant.
-  const gapAngleDeg = 135 + rng.gauss(0, 5);
-  const gapWidthDeg = 32 + rng.range(-3, 5);
-  const tailLengthDeg = 22 + rng.range(-3, 5);
+  // gapAngleDeg = 110: center of gap south of 7 o'clock so the brush start
+  // (at gapAngleDeg + halfGap ≈ 135°) lands in the bottom-left quadrant.
+  // Wide gap (55°) minus short tail (15°) leaves a clearly visible 40° gap
+  // in the open ensō.
+  const gapAngleDeg = 110 + rng.gauss(0, 4);
+  const gapWidthDeg = 55 + rng.range(-3, 5);
+  const tailLengthDeg = 15 + rng.range(-2, 4);
 
   // Body geometry first (pure, no rng calls), then the actual brushed enso
   // (consumes rng for the wobble). This ordering preserves determinism.
@@ -120,9 +124,9 @@ export function renderChoiceA({ number, size = 200, seed = 0 }) {
   const wetDrop = irregularBlob({
     cx: bp0.x,
     cy: bp0.y,
-    size: radius * 0.14,
-    irregularity: 0.35,
-    elongation: 0.30,
+    size: radius * 0.22,
+    irregularity: 0.40,
+    elongation: 0.35,
     rotationRad: tanAngle + Math.PI / 2,
     rng,
   });

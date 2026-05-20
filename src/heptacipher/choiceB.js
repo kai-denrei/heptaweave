@@ -43,11 +43,11 @@ export function renderChoiceB({ number, size = 100, seed = 0 }) {
   // Even smaller radius — outward lobes still need to fit in the viewBox.
   const radius = size * 0.18;
 
-  // Gap centered at 135° (bottom-left). Brush-landing notch lands in the
-  // bottom-left quadrant matching the canonical heptacipher ensō.
-  const gapAngleDeg = 135 + rng.gauss(0, 4);
-  const gapWidthDeg = 30 + rng.range(-3, 5);
-  const tailLengthDeg = 18 + rng.range(-2, 4);
+  // Wide gap with short tail leaves a clearly visible open ensō. Brush start
+  // (at gapAngleDeg + halfGap ≈ 137°) lands in the bottom-left quadrant.
+  const gapAngleDeg = 110 + rng.gauss(0, 4);
+  const gapWidthDeg = 55 + rng.range(-3, 5);
+  const tailLengthDeg = 15 + rng.range(-2, 4);
 
   const bodyGeo = ensoBodyGeometry({ cx, cy, radius, gapAngleDeg, gapWidthDeg });
   const { outlineD: ensoPath } = enso({
@@ -74,7 +74,7 @@ export function renderChoiceB({ number, size = 100, seed = 0 }) {
     const inward = DIGIT_LOBE_INWARD[i];
     const lobeStart = anchorAt(tStart, inward);
     const lobeEnd   = anchorAt(tEnd,   inward);
-    const baseBulge = inward ? 0.30 : 0.42;
+    const baseBulge = inward ? 0.45 : 0.55;
     const result = morseDigitArcAppendage({
       digit: digits[i],
       lobeStartPoint: lobeStart,
@@ -97,9 +97,9 @@ export function renderChoiceB({ number, size = 100, seed = 0 }) {
   const wetDrop = irregularBlob({
     cx: bp0.x,
     cy: bp0.y,
-    size: radius * 0.14,
-    irregularity: 0.35,
-    elongation: 0.30,
+    size: radius * 0.22,
+    irregularity: 0.40,
+    elongation: 0.35,
     rotationRad: tanAngle + Math.PI / 2,
     rng,
   });
