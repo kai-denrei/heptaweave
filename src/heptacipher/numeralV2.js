@@ -96,6 +96,19 @@ export function renderHeptapodNumeralV2({
   liquidWobble = 0,
   liquidDetail = 0.04,
   vbPadFrac = 0.3,
+  // Tuning overrides — passing any of these as an explicit number disables the
+  // per-render jitter on that field, useful for reproducible side-by-side
+  // tuning. Defaults to the canonical V2 values when omitted.
+  gapAngleDeg = null,
+  gapWidthDeg = null,
+  tailLengthDeg = null,
+  lobeBulgeOutward = LOBE_BULGE_OUTWARD,
+  lobeBulgeInward = LOBE_BULGE_INWARD,
+  dotSizeFactor = 0.20,
+  dashWidthFactor = 0.04,
+  dashMinWidth = 0.6,
+  wetDropSizeFrac = WET_DROP_SIZE_FRAC,
+  disableJitter = false,
 } = {}) {
   if (!Number.isInteger(number) || number < 0 || number > 9999) {
     throw new TypeError(`numeralV2: number must be 0..9999, got ${number}`);
@@ -109,13 +122,18 @@ export function renderHeptapodNumeralV2({
   const radius = size * 0.24;
 
   // ENSO -----------------------------------------------------------------
-  const gapAngleDeg = DEFAULT_GAP_DEG + rng.gauss(0, 6);
-  const gapWidthDeg = 32 + rng.range(-4, 6);
-  const tailLengthDeg = 22 + rng.range(-3, 5);
+  // Each field accepts an explicit override (used by the tuning UI) or
+  // falls back to the canonical V2 jittered defaults.
+  const gapJitter   = disableJitter ? 0 : rng.gauss(0, 6);
+  const widthJitter = disableJitter ? 0 : rng.range(-4, 6);
+  const tailJitter  = disableJitter ? 0 : rng.range(-3, 5);
+  const _gapAngleDeg   = (gapAngleDeg   !== null) ? gapAngleDeg   : (DEFAULT_GAP_DEG + gapJitter);
+  const _gapWidthDeg   = (gapWidthDeg   !== null) ? gapWidthDeg   : (32 + widthJitter);
+  const _tailLengthDeg = (tailLengthDeg !== null) ? tailLengthDeg : (22 + tailJitter);
 
-  const bodyGeo = ensoBodyGeometry({ cx, cy, radius, gapAngleDeg, gapWidthDeg });
+  const bodyGeo = ensoBodyGeometry({ cx, cy, radius, gapAngleDeg: _gapAngleDeg, gapWidthDeg: _gapWidthDeg });
   const { outlineD: ensoPath } = enso({
-    cx, cy, radius, gapAngleDeg, gapWidthDeg, tailLengthDeg, rng,
+    cx, cy, radius, gapAngleDeg: _gapAngleDeg, gapWidthDeg: _gapWidthDeg, tailLengthDeg: _tailLengthDeg, rng,
   });
 
   // LOBE ENDPOINTS -------------------------------------------------------
@@ -140,8 +158,9 @@ export function renderHeptapodNumeralV2({
     const inward = DIGIT_LOBE_INWARD[i];
     const lobeStart = anchorAt(tStart, inward);
     const lobeEnd   = anchorAt(tEnd,   inward);
-    const baseBulge = (inward ? LOBE_BULGE_INWARD : LOBE_BULGE_OUTWARD) * bulgeScale;
-    const bulge = baseBulge + rng.gauss(0, LOBE_BULGE_JITTER);
+    const baseBulge = (inward ? lobeBulgeInward : lobeBulgeOutward) * bulgeScale;
+    const bulgeJitter = disableJitter ? 0 : rng.gauss(0, LOBE_BULGE_JITTER);
+    const bulge = baseBulge + bulgeJitter;
 
     const result = morseDigitArcAppendage({
       digit: digits[i],
@@ -154,6 +173,9 @@ export function renderHeptapodNumeralV2({
       bulge,
       inward,
       markSpread,
+      dotSizeFactor,
+      dashWidthFactor,
+      dashMinWidth,
     });
     appendageBodies.push(result.body);
   }
@@ -162,7 +184,7 @@ export function renderHeptapodNumeralV2({
   const bp0 = bodyGeo.bodyPoint(0);
   const bpEps = bodyGeo.bodyPoint(0.005);
   const tanAngle = Math.atan2(bpEps.y - bp0.y, bpEps.x - bp0.x);
-  const wetDropSize = radius * WET_DROP_SIZE_FRAC;
+  const wetDropSize = radius * wetDropSizeFrac;
   const wetDropPath = irregularBlob({
     cx: bp0.x,
     cy: bp0.y,

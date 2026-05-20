@@ -1,29 +1,33 @@
-// binaryScore.js — variable-width binary score in brush marks.
+// binaryScore.js — fixed 8-bit binary score in brush marks.
 //
-// `renderBinaryScore({ score, size, markSize, rng })` returns an SVG group
-// where:
-//   • each "1" bit is an `irregularBlob` (solid round ink puddle)
-//   • each "0" bit is a short `brushStroke` dash
-//   • bits are laid out left-to-right, MSB first
-//   • the row grows leftward (i.e., the row's right edge stays fixed at x=0;
-//     callers position the row by anchoring its right edge)
+// Reading order: LEFT to RIGHT, LSB first.
+//   bit 0 (leftmost) = 2^0 = 1
+//   bit 7 (rightmost) = 2^7 = 128
 //
-// `renderBigBinaryScore` is the same, but bigger and intended for the
-// game-over screen — used as the centerpiece.
+// Examples (8 marks each):
+//   00000000 → 0
+//   10000000 → 1
+//   01000000 → 2
+//   11000000 → 3
+//   10001000 → 17
 //
-// `score = 0` returns an empty group.
+// "1" = irregular ink blob; "0" = short hyphen brush stroke.
 
 import { brushStroke, lensProfile } from '../ink/brush.js';
 import { irregularBlob } from '../ink/splotch.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const TOTAL_BITS = 8;
 
 /**
- * Returns the SVG <g> element + the total width in user units.
- *
- * Bits are placed at x = -i × stride (i=0 is the rightmost bit = LSB), so the
- * row's right edge is anchored at x=0. Caller can `g.setAttribute('transform',
- * 'translate(rightEdgeX, baselineY)')` to position.
+ * @param {Object} opts
+ * @param {number} opts.score      score (clamped to 0..255 for display; higher
+ *                                 scores still pass through unchanged for game
+ *                                 logic — only the upper bits are clipped).
+ * @param {number} [opts.markSize=12]
+ * @param {Object} opts.rng
+ * @param {number} [opts.bitGap=0.6]
+ * @returns {{groupEl: SVGGElement, width: number, bitCount: number}}
  */
 export function renderBinaryScore({
   score,
@@ -34,24 +38,17 @@ export function renderBinaryScore({
   const group = document.createElementNS(SVG_NS, 'g');
   group.setAttribute('class', 'binary-score');
   group.setAttribute('fill', 'currentColor');
-  if (score <= 0) {
-    return { groupEl: group, width: 0, bitCount: 0 };
-  }
-  const bits = score.toString(2); // MSB first
+
   const stride = markSize * (1 + bitGap);
+  const totalWidth = (TOTAL_BITS - 1) * stride + markSize;
+  const safeScore = Math.max(0, Math.floor(score)) & 0xff;
 
-  // We want MSB on the LEFT, LSB on the RIGHT. The rightmost bit sits at
-  // x = 0; the leftmost (MSB) sits at x = -(bits.length - 1) * stride.
-  const totalWidth = (bits.length - 1) * stride + markSize;
-
-  for (let i = 0; i < bits.length; i++) {
-    const isOne = bits[i] === '1';
-    // i = 0 (MSB) sits leftmost.
-    const xCenter = -(bits.length - 1 - i) * stride;
+  for (let i = 0; i < TOTAL_BITS; i++) {
+    const isOne = ((safeScore >> i) & 1) === 1;
+    const xCenter = i * stride; // bit i goes at column i; leftmost = LSB
     const yCenter = 0;
     let d;
     if (isOne) {
-      // Solid blob.
       d = irregularBlob({
         cx: xCenter,
         cy: yCenter,
@@ -61,7 +58,6 @@ export function renderBinaryScore({
         rng,
       });
     } else {
-      // Short dash — a horizontal brushStroke half the mark wide.
       const halfLen = markSize * 0.45;
       const dashH = markSize * 0.16;
       const controlPoints = [
@@ -84,5 +80,5 @@ export function renderBinaryScore({
     group.appendChild(path);
   }
 
-  return { groupEl: group, width: totalWidth, bitCount: bits.length };
+  return { groupEl: group, width: totalWidth, bitCount: TOTAL_BITS };
 }

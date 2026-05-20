@@ -27,6 +27,15 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 // ============================================================================
 const LS_RENDERER = 'heptaweave.renderer';
 const LS_BEST     = 'heptaweave.best';
+const LS_TUNE     = 'heptaweave.tune';
+
+/** Read tuning params written by scripts/tune.html. Returns {} if none. */
+function loadTune() {
+  try {
+    const raw = localStorage.getItem(LS_TUNE);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
 
 function loadRenderer() {
   try { return localStorage.getItem(LS_RENDERER) === 'B' ? 'B' : 'A'; }
@@ -105,26 +114,33 @@ let timerRing = null;
 let lastBitCount = 0;
 function renderScoreRow({ animateNewBit = false } = {}) {
   const s = store.get();
-  const { groupEl, width, bitCount } = renderBinaryScore({
+  const { groupEl, width } = renderBinaryScore({
     score: s.score,
     markSize: 18,
     rng: createRng(s.score + 1),
   });
-  // Build SVG host. The score row anchors its right edge at x=0 in user-space,
-  // so we shift the inner group right by `width` to keep MSB at the row's left.
+  // Fixed 8-bit row, LSB-on-left. Group's leftmost bit sits at x=0, so we
+  // anchor its left edge to the score-row container's left edge — no
+  // translate needed.
   const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', `0 -16 ${Math.max(40, width + 8)} 32`);
+  svg.setAttribute('viewBox', `-12 -16 ${width + 24} 32`);
   svg.setAttribute('height', '28');
   svg.style.color = 'var(--ink)';
-  groupEl.setAttribute('transform', `translate(${width}, 0)`);
-  // Mark newly-added MSB bit for pop animation (only when a new bit appears).
-  if (animateNewBit && bitCount > lastBitCount) {
-    const first = groupEl.querySelector('path[data-bit-index="0"]');
-    if (first) first.classList.add('new-bit');
+  // The "new bit" animation hooks into whichever bit just flipped from 0 to 1.
+  // Detect via the bit that's now set but wasn't on the previous score.
+  if (animateNewBit) {
+    const prev = lastBitCount;
+    const flipped = (s.score & ~prev);
+    let bitIdx = -1;
+    for (let i = 0; i < 8; i++) if ((flipped >> i) & 1) { bitIdx = i; break; }
+    if (bitIdx >= 0) {
+      const path = groupEl.querySelector(`path[data-bit-index="${bitIdx}"]`);
+      if (path) path.classList.add('new-bit');
+    }
   }
   svg.appendChild(groupEl);
   els.scoreRow.replaceChildren(svg);
-  lastBitCount = bitCount;
+  lastBitCount = s.score & 0xff;
 }
 
 // ============================================================================
@@ -137,9 +153,8 @@ function renderBigBinary(score) {
     rng: createRng((score + 17) * 31),
   });
   const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', `0 -32 ${Math.max(60, width + 8)} 64`);
+  svg.setAttribute('viewBox', `-22 -32 ${width + 44} 64`);
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-  groupEl.setAttribute('transform', `translate(${width}, 0)`);
   svg.appendChild(groupEl);
   els.bigBinary.replaceChildren(svg);
 }
@@ -293,14 +308,16 @@ function renderChoices(choiceNumbers, onPick) {
     tile.style.top  = `${py - tileR}px`;
 
     // Don't expose the numeric answer in any attribute or textContent.
-    // vbPadFrac 0.10 (vs canonical 0.30) lets the glyph dominate the tile —
-    // chosen so choice glyphs read at a comparable visual scale to the
-    // Cistercian without breaking V2's other proportions.
+    // Tuning UI (scripts/tune.html) writes overrides to localStorage; merge
+    // them on top of the choice-tile defaults so the user can dial in the
+    // look from their phone and see it persist into the game.
+    const tune = loadTune();
     const svg = renderHeptapodNumeralV2({
       number: n,
       size: v2Internal,
       seed: s.rng.seed ^ (n * 7919),
       vbPadFrac: 0.10,
+      ...tune,
     });
     tile.appendChild(svg);
 

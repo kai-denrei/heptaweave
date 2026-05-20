@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>heptaweave tune</title>
+<style>
+  :root {
+    --bg: #f6f1e7;
+    --paper: #fbf7ee;
+    --ink: #161310;
+    --muted: #8a847a;
+    --accent: #8a3a2b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: ui-serif, Georgia, "Times New Roman", serif;
+  }
+  body { padding: 12px max(12px, env(safe-area-inset-left)) 28px max(12px, env(safe-area-inset-right)); }
+
+  /* PREVIEW */
+  .preview-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    background: var(--paper);
+    border-radius: 12px;
+    padding: 12px 8px;
+    margin-bottom: 12px;
+    position: sticky;
+    top: 4px;
+    z-index: 10;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .preview-cell {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 130px;
+    overflow: visible;
+  }
+  .preview-cell svg { display: block; max-width: 100%; }
+  .preview-cell .n {
+    margin-top: 4px;
+    font: 10px ui-monospace, monospace;
+    color: var(--muted);
+  }
+
+  /* CONTROLS */
+  .section {
+    margin: 16px 0 4px;
+    font: 700 11px/1 ui-monospace, monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    padding-bottom: 4px;
+  }
+  .slider {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 8px;
+    align-items: center;
+    padding: 6px 0;
+  }
+  .slider label {
+    font: 12px ui-monospace, monospace;
+    color: var(--ink);
+  }
+  .slider .val {
+    font: 600 12px ui-monospace, monospace;
+    color: var(--accent);
+    min-width: 44px;
+    text-align: right;
+  }
+  .slider input[type=range] {
+    grid-column: 1 / span 2;
+    width: 100%;
+    height: 28px;
+    -webkit-appearance: none;
+    background: transparent;
+    margin: 0;
+  }
+  .slider input[type=range]::-webkit-slider-runnable-track {
+    height: 4px;
+    background: rgba(0,0,0,0.18);
+    border-radius: 2px;
+  }
+  .slider input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    background: var(--ink);
+    border-radius: 50%;
+    margin-top: -9px;
+    border: 2px solid var(--paper);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .slider input[type=range]::-moz-range-track {
+    height: 4px;
+    background: rgba(0,0,0,0.18);
+    border-radius: 2px;
+  }
+  .slider input[type=range]::-moz-range-thumb {
+    width: 22px; height: 22px;
+    background: var(--ink);
+    border-radius: 50%;
+    border: 2px solid var(--paper);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  /* ACTIONS */
+  .actions {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0,0,0,0.10);
+  }
+  .actions button, .actions a {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px 14px;
+    font: 600 13px ui-monospace, monospace;
+    background: var(--ink);
+    color: var(--paper);
+    text-decoration: none;
+    text-align: center;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .actions button.secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid rgba(0,0,0,0.30);
+  }
+  .actions button.warn { background: var(--accent); }
+  .status {
+    margin-top: 12px;
+    font: 11px ui-monospace, monospace;
+    color: var(--muted);
+    word-break: break-all;
+  }
+  pre {
+    margin: 8px 0 0;
+    padding: 10px;
+    background: rgba(0,0,0,0.04);
+    border-radius: 6px;
+    font: 10px/1.4 ui-monospace, monospace;
+    color: var(--ink);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+</style>
+</head>
+<body>
+
+<div class="preview-strip" id="previewStrip">
+  <div class="preview-cell" data-n="0123"><div class="n">0123</div></div>
+  <div class="preview-cell" data-n="2468"><div class="n">2468</div></div>
+  <div class="preview-cell" data-n="5555"><div class="n">5555</div></div>
+  <div class="preview-cell" data-n="9876"><div class="n">9876</div></div>
+</div>
+
+<div id="controls"></div>
+
+<div class="actions">
+  <button id="resetBtn" class="secondary">Reset to canon</button>
+  <button id="clearBtn" class="warn">Clear &amp; quit tuning</button>
+  <a id="gameLink" href="../index.html">▶ Play</a>
+</div>
+
+<div class="status" id="status"></div>
+<pre id="dump"></pre>
+
+<script type="module">
+import { renderHeptapodNumeralV2 } from '../src/heptacipher/numeralV2.js';
+
+const LS_TUNE = 'heptaweave.tune';
+
+// Slider config: [groupName, id, label, min, max, step, defaultValue]
+const SLIDERS = [
+  ['Ensō',  'gapAngleDeg',      'gap angle (°)',      0,    359,  1,    90 ],
+  ['Ensō',  'gapWidthDeg',      'gap width (°)',      10,   80,   1,    32 ],
+  ['Ensō',  'tailLengthDeg',    'tail length (°)',    0,    60,   1,    22 ],
+  ['Lobes', 'bulgeScale',       'bulge scale',        0.30, 2.00, 0.05, 1.00 ],
+  ['Lobes', 'lobeBulgeOutward', 'outward amplitude',  0.20, 1.00, 0.02, 0.50 ],
+  ['Lobes', 'lobeBulgeInward',  'inward amplitude',   0.10, 0.80, 0.02, 0.32 ],
+  ['Lobes', 'digitGap',         'lobe spacing',       0.04, 0.16, 0.005,0.08 ],
+  ['Lobes', 'markSpread',       'mark spread',        0.20, 1.50, 0.05, 1.00 ],
+  ['Marks', 'dotSizeFactor',    'dot thickness',      0.05, 0.50, 0.01, 0.20 ],
+  ['Marks', 'dashWidthFactor',  'dash width factor',  0.01, 0.20, 0.005,0.04 ],
+  ['Marks', 'dashMinWidth',     'dash min width (px)',0.3,  3.0,  0.1,  0.6 ],
+  ['Marks', 'wetDropSizeFrac',  'wet-drop size',      0.05, 0.30, 0.01, 0.13 ],
+  ['Ink',   'bleedScale',       'bleed scale',        0.30, 2.50, 0.05, 1.00 ],
+  ['Ink',   'haloOpacity',      'halo opacity',       0.00, 1.50, 0.05, 1.00 ],
+  ['Ink',   'liquidWobble',     'liquid wobble',      0,    20,   0.5,  0 ],
+  ['Ink',   'liquidDetail',     'liquid detail',      0.005,0.20, 0.005,0.04 ],
+  ['Render','vbPadFrac',        'glyph fill (less=bigger)',0.0,0.40,0.01, 0.10 ],
+  ['Render','size',             'render size (px)',   100,  360,  10,   200 ],
+];
+
+const DEFAULTS = Object.fromEntries(SLIDERS.map(s => [s[1], s[6]]));
+
+// Load saved values or fall back to defaults.
+function loadValues() {
+  try {
+    const raw = localStorage.getItem(LS_TUNE);
+    const saved = raw ? JSON.parse(raw) : {};
+    return { ...DEFAULTS, ...saved };
+  } catch { return { ...DEFAULTS }; }
+}
+
+let current = loadValues();
+
+function saveAndDump() {
+  // Only persist values that differ from canonical V2 defaults so the game
+  // gracefully falls back to canon when fields are at default.
+  const out = {};
+  for (const [, id, , , , , def] of SLIDERS) {
+    if (current[id] !== def) out[id] = current[id];
+  }
+  try { localStorage.setItem(LS_TUNE, JSON.stringify(out)); } catch {}
+  document.getElementById('status').textContent =
+    Object.keys(out).length === 0
+      ? 'all canonical (no overrides written)'
+      : `${Object.keys(out).length} override(s) saved → localStorage.${LS_TUNE}`;
+  document.getElementById('dump').textContent =
+    Object.keys(out).length === 0 ? '{}' : JSON.stringify(out, null, 2);
+}
+
+// Build sliders, grouped.
+const groups = {};
+for (const s of SLIDERS) {
+  const [grp] = s;
+  if (!groups[grp]) groups[grp] = [];
+  groups[grp].push(s);
+}
+const controls = document.getElementById('controls');
+for (const [grp, items] of Object.entries(groups)) {
+  const h = document.createElement('div');
+  h.className = 'section';
+  h.textContent = grp;
+  controls.appendChild(h);
+  for (const [, id, label, min, max, step] of items) {
+    const wrap = document.createElement('div');
+    wrap.className = 'slider';
+    const labelEl = document.createElement('label');
+    labelEl.textContent = label;
+    labelEl.htmlFor = `s_${id}`;
+    const valEl = document.createElement('div');
+    valEl.className = 'val';
+    valEl.textContent = formatVal(current[id], step);
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.id = `s_${id}`;
+    input.min = String(min);
+    input.max = String(max);
+    input.step = String(step);
+    input.value = String(current[id]);
+    input.addEventListener('input', () => {
+      const v = Number(input.value);
+      current[id] = v;
+      valEl.textContent = formatVal(v, step);
+      renderPreview();
+      saveAndDump();
+    });
+    wrap.appendChild(labelEl);
+    wrap.appendChild(valEl);
+    wrap.appendChild(input);
+    controls.appendChild(wrap);
+  }
+}
+
+function formatVal(v, step) {
+  const decimals = (String(step).split('.')[1] || '').length;
+  return decimals > 0 ? v.toFixed(decimals) : String(v | 0);
+}
+
+// PREVIEW -------------------------------------------------------------
+function renderPreview() {
+  const params = {
+    bulgeScale: current.bulgeScale,
+    digitGap: current.digitGap,
+    markSpread: current.markSpread,
+    bleedScale: current.bleedScale,
+    haloOpacity: current.haloOpacity,
+    liquidWobble: current.liquidWobble,
+    liquidDetail: current.liquidDetail,
+    vbPadFrac: current.vbPadFrac,
+    gapAngleDeg: current.gapAngleDeg,
+    gapWidthDeg: current.gapWidthDeg,
+    tailLengthDeg: current.tailLengthDeg,
+    lobeBulgeOutward: current.lobeBulgeOutward,
+    lobeBulgeInward: current.lobeBulgeInward,
+    dotSizeFactor: current.dotSizeFactor,
+    dashWidthFactor: current.dashWidthFactor,
+    dashMinWidth: current.dashMinWidth,
+    wetDropSizeFrac: current.wetDropSizeFrac,
+    disableJitter: true, // reproducible while tuning
+  };
+  for (const cell of document.querySelectorAll('.preview-cell')) {
+    const n = Number(cell.dataset.n);
+    // Drop previous SVG (keep label).
+    [...cell.querySelectorAll('svg')].forEach(el => el.remove());
+    const svg = renderHeptapodNumeralV2({
+      number: n,
+      size: current.size,
+      seed: 0x71eaf005 ^ (n * 1009),
+      ...params,
+    });
+    cell.insertBefore(svg, cell.firstChild);
+  }
+}
+
+// ACTIONS -------------------------------------------------------------
+document.getElementById('resetBtn').addEventListener('click', () => {
+  current = { ...DEFAULTS };
+  for (const [, id, , , , step] of SLIDERS) {
+    const input = document.getElementById(`s_${id}`);
+    if (!input) continue;
+    input.value = String(current[id]);
+    const val = input.parentElement.querySelector('.val');
+    if (val) val.textContent = formatVal(current[id], step);
+  }
+  renderPreview();
+  saveAndDump();
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  try { localStorage.removeItem(LS_TUNE); } catch {}
+  current = { ...DEFAULTS };
+  for (const [, id, , , , step] of SLIDERS) {
+    const input = document.getElementById(`s_${id}`);
+    if (!input) continue;
+    input.value = String(current[id]);
+    const val = input.parentElement.querySelector('.val');
+    if (val) val.textContent = formatVal(current[id], step);
+  }
+  renderPreview();
+  document.getElementById('status').textContent = 'cleared — game uses canonical V2';
+  document.getElementById('dump').textContent = '{}';
+});
+
+// INIT ----------------------------------------------------------------
+renderPreview();
+saveAndDump();
+</script>
+
+</body>
+</html>
