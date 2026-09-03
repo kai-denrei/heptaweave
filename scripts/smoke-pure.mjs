@@ -15,6 +15,7 @@ import { pickChoices } from '../src/game/distractors.js';
 import { buildRound } from '../src/game/round.js';
 import { digitsOf, PATTERNS } from '../src/heptacipher/morsePatterns.js';
 import { MODE_CONFIG, isCleanResult } from '../src/game/modes.js';
+import { createParams, DEFAULTS, encodeDiff, decodeDiff, diffFromHash, dissipFor } from '../src/params.js';
 
 let fails = 0;
 function ok(msg, cond) {
@@ -135,6 +136,49 @@ console.log('\nmodes');
   ok('ENDLESS endOnError', MODE_CONFIG.ENDLESS.endOnError === true);
   ok('clean iff errors=0', isCleanResult({ mode: 'TIMED', errors: 0 }) === true);
   ok('errors=1 not clean', isCleanResult({ mode: 'TIMED', errors: 1 }) === false);
+}
+
+console.log('\nparams');
+{
+  const diff = { flowStrength: 2.1, pinTier: 7, holdMs: 0 };
+  const enc = encodeDiff(diff);
+  ok('encode is base64url (no + / =)', /^[A-Za-z0-9_-]+$/.test(enc));
+  ok('decode round-trips', JSON.stringify(decodeDiff(enc)) === JSON.stringify(diff));
+  ok('decode drops unknown keys', Object.keys(decodeDiff(encodeDiff({ nope: 1, grain: 0.1 }))).join() === 'grain');
+  ok('decode of garbage is {}', Object.keys(decodeDiff('!!notbase64')).length === 0);
+  ok('empty diff encodes to empty string', encodeDiff({}) === '');
+  ok('diffFromHash finds p= among other flags', diffFromHash('#test&p=' + enc).pinTier === 7);
+  ok('diffFromHash without p= is {}', Object.keys(diffFromHash('#test')).length === 0);
+
+  // Overlay precedence: defaults ← storage ← hash.
+  const mem = new Map();
+  const storage = { getItem: k => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+  storage.setItem('k', JSON.stringify({ flowStrength: 0.5, grain: 0.1 }));
+  const p = createParams({ storageKey: 'k', hash: '#p=' + encodeDiff({ flowStrength: 2.9 }), storage });
+  ok('hash beats storage', p.get('flowStrength') === 2.9);
+  ok('storage beats default', p.get('grain') === 0.1);
+  ok('untouched key is default', p.get('holdMs') === DEFAULTS.holdMs);
+  ok('diff lists only changed keys', Object.keys(p.diff()).sort().join() === 'flowStrength,grain');
+  let seen = null;
+  p.on((k, v) => { seen = [k, v]; });
+  p.set('holdMs', 900);
+  ok('set emits', seen && seen[0] === 'holdMs' && seen[1] === 900);
+  p.set('bogus', 1);
+  ok('unknown key ignored', p.get('bogus') === undefined);
+  p.save();
+  ok('save writes the diff', JSON.parse(mem.get('k')).holdMs === 900);
+  p.reset();
+  ok('reset returns to defaults', Object.keys(p.diff()).length === 0);
+  ok('shareHash empty at defaults', p.shareHash() === '');
+  p.set('caustic', 3);
+  ok('shareHash carries p=', p.shareHash().startsWith('p='));
+
+  // Dissolve math: density after `seconds` at 60 steps/s hits the floor.
+  const d = dissipFor(1.5, 0.02);
+  ok('dissipFor(1.5s) < 1', d < 1 && d > 0.9);
+  ok('dissipFor lands on floor', Math.abs(Math.pow(d, 90) - 0.02) < 1e-9);
+  ok('dissipFor(8s) slower than 1.5s', dissipFor(8, 0.02) > d);
+  ok('dissipFor(0) = 1 (stays)', dissipFor(0) === 1);
 }
 
 console.log(`\ndone — ${fails} failures`);

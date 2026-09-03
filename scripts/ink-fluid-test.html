@@ -1,0 +1,69 @@
+<!doctype html><html><head>
+<meta charset="utf-8">
+<title>fluid test</title>
+<style>
+  html,body{margin:0;padding:0;background:#08090d;overflow:hidden}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+  #log{position:fixed;left:6px;top:6px;font:11px ui-monospace,monospace;color:#8a8;white-space:pre;z-index:2}
+</style>
+</head><body>
+<canvas id="c"></canvas>
+<pre id="log"></pre>
+<script type="module">
+import { createFluid } from '../src/render/ink/fluid.js';
+import { createPainter } from '../src/render/ink/glyphPainter.js';
+import { createParams } from '../src/params.js';
+import { sampleLut } from '../src/render/ink/palettes.js';
+
+const log = document.getElementById('log');
+const out = (m) => { log.textContent += m + '\n'; };
+const canvas = document.getElementById('c');
+const fluid = createFluid(canvas);
+if (!fluid.ok) { out('NO GL: ' + fluid.reason); }
+else {
+  out('gl ok texType=' + fluid.texType + ' sim=' + fluid.simSize.w + 'x' + fluid.simSize.h);
+  const params = createParams({ storageKey: 'x-test', hash: location.hash });
+  const q = new URLSearchParams(location.search);
+  const mode = q.get('mode') || 'ring';   // ring | glyph
+  const number = Number(q.get('n') || 1234);
+  const holdSteps = Number(q.get('steps') || 0);   // extra frozen frames after paint
+  const flowSteps = Number(q.get('flow') || 0);    // frames of flow after that
+
+  const core = sampleLut(fluid.lut, 0.02);
+  let painter = null;
+  if (mode === 'ring') {
+    const n = 40;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      fluid.splat(0.5 + Math.cos(a) * 0.12 / fluid.aspect, 0.5 + Math.sin(a) * 0.12, core.map(c => c * 3), 0.03, 0.4);
+    }
+  } else {
+    painter = createPainter({ fluid, params });
+    const W = innerWidth, H = innerHeight;
+    const size = Math.min(W, H) * params.get('promptSize');
+    painter.begin({ number, box: { x: (W - size) / 2, y: (H - size) / 2, w: size, h: size }, seed: 7, rgb: core });
+    // Drive the trace synchronously.
+    const t0 = 0;
+    const traceMs = params.get('traceMs');
+    for (let t = 0; t <= traceMs + 16; t += 16) painter.update(t0 + t);
+    out('painted ' + number + ' done=' + painter.update(t0 + traceMs + 32).done);
+  }
+  const cfg = {
+    dissip: 1, flowStr: 0, flowScale: params.get('flowScale'), current: params.get('current'),
+    curlE: params.get('filament'), octaves: params.get('octaves'),
+  };
+  for (let i = 0; i < holdSteps; i++) fluid.step(1 / 60, cfg);
+  const flowCfg = { ...cfg, dissip: 0.985, flowStr: params.get('flowStrength') };
+  for (let i = 0; i < flowSteps; i++) fluid.step(1 / 60, flowCfg);
+  fluid.render({
+    bloomThreshold: params.get('bloomThreshold'), bloomGain: params.get('bloomGain'),
+    bloomMix: params.get('bloomMix'), caustic: params.get('caustic'), grain: params.get('grain'),
+    vignette: params.get('vignette'), light: 1,
+  });
+  out('rendered mode=' + mode + ' hold=' + holdSteps + ' flow=' + flowSteps);
+  // Keep rendering so the compositor has a frame to grab.
+  const loop = () => { fluid.render({ light: 1 }); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+}
+</script>
+</body></html>

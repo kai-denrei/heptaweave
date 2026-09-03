@@ -36,6 +36,22 @@ function mapPoint(p, size, padFrac) {
 }
 
 /**
+ * The sigil's segments as pixel-space line pairs, for renderers that draw
+ * with something other than SVG paths (the ink theme paints them as brush
+ * runs into a fluid). Same mapping as `renderCistercianInk`, no jitter.
+ *
+ * @returns {{ from:{x,y}, to:{x,y}, place:string }[]}
+ */
+export function cistercianSegmentsPx({ number, size, padFrac = 0.10 }) {
+  const { segments } = buildCistercian(number);
+  return segments.map((seg) => ({
+    from: mapPoint(seg.from, size, padFrac),
+    to: mapPoint(seg.to, size, padFrac),
+    place: seg.place,
+  }));
+}
+
+/**
  * Build a single segment's brushStroke control points.
  *
  * `from` and `to` are already mapped to pixel coords. We insert a small
