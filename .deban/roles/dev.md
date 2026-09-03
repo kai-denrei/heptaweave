@@ -2,7 +2,7 @@
 role: dev
 owner: claude-on-kainode
 status: active
-last-updated: 2026-05-21
+last-updated: 2026-09-03
 ---
 
 
@@ -62,6 +62,8 @@ Implementation details, file-level conventions, build/test commands, dev-server.
   - **How to apply:** when working on rendering / layout / visual-state code, write the harness early. Use `chrome --headless --screenshot=path url` with a generous `--virtual-time-budget` if the page is async.
 
 ## Open Questions
+- [ ] **One-trait Cistercian (TO-DO 1) — mechanism.** This is a regrouping, not a rewrite: `digitMap.js` already stores each digit as a **polyline** (`UNIT_DIGIT_PATHS[9] = [[p(1,1), p(2,1), p(2,0), p(1,0)]]` — one 4-point path), and `geometry.js:pathsToSegments` shreds every polyline into independent 2-point segments before either renderer sees it. So the work is: expose paths alongside segments (`buildCistercian` → `paths`, and a `cistercianPathsPx()` next to `cistercianSegmentsPx()`), then draw **one** brush run per path with a single width profile spanning the whole polyline, and stop emitting the per-endpoint puddles. Both consumers are ready for it: `brushStroke` already takes N control points and Catmull-Roms them, and the ink painter's brush run is already a parametric walk that could follow a polyline instead of a 2-point line. For the stricter "one unbroken trait" reading, add travel strokes along the stave between quadrants. Verify with `scripts/ink-cdp-shots.mjs` and the paper harness side by side.  — owner: claude-on-kainode — since: 2026-09-03
+- [ ] **Large-round-glyph mode (TO-DO 2) — what already exists.** The renderer contract separates `paintPrompt` from `renderChoices`, so an inverted mode is mostly a matter of which renderer draws which side, not new rules code: `distractors.js` works on numbers and is agnostic to how they are drawn. The ink painter can already put an arbitrary logogram into the fluid — `splashSvg()` samples any SVG's paths via `getPointAtLength` + `getScreenCTM` and splats them, which is exactly what a round prompt needs (today it is only used for the pick reaction). Missing: a mode entry in `MODE_CONFIG`, a third landing symbol, and a Cistercian-at-tile-size render path.  — owner: claude-on-kainode — since: 2026-09-03
 - [ ] Should the bust.sh from heptacipher walk all .js too, or just .html/.htm? Current: also rewrites <meta cb> in any .html/.htm/.js but only fingerprints URLs in .html/.css. Good enough for now. — owner: claude-on-kainode — since: 2026-05-20
 
 ## Assumptions
@@ -73,6 +75,7 @@ Blocked by:
 Feeds into:
 
 ## Session Log
+- 2026-09-03 (ink theme + promotion) — Renderer seam extracted (rules-only `main.js`); ink theme built (own WebGL dye engine, glyph painter, choreography); `params.js` + admin panel + presets; promoted to default (`index.html`), paper to `paper.html`, SW v4. Lesson recorded on `--virtual-time-budget` starving rAF. Both to-dos scoped in Open Questions above — to-do 1 turns out to be a regrouping (the polylines already exist, `pathsToSegments` shreds them), and to-do 2 already has its hardest piece (`splashSvg` paints arbitrary SVG into the fluid).
 - 2026-05-21 (PWA hardening) — Eight-item pass from the mobile-pwa skill review, all addressed in one commit: opt-in SW update toast, precached styled offline.html, raster icon set (180/192/512/maskable-512), navigationPreload race in networkFirst, FIFO cache cap (max 40 runtime entries), theme_color → cream paper, prefers-reduced-motion wrap, install affordance (Chrome BIP + iOS A2HS) gated to game-over with localStorage-persisted dismissal. Lessons: skill-driven review catches a lot of items that drift in early. Symbol-only meta-UI works when you pick well-known glyphs (↻ ⤓ ⊘ ✕).
 - 2026-05-20 (tune session) — Retired choiceA/choiceB; new `numeralV2.js` is a direct port of compositeFlow's V2. Layout switched to organic quincunx slot presets. Score is now fixed 8-bit LSB-on-left. Built `scripts/tune.html` + 18-slider live-preview UI; locked the user's tuned values as `HEPTAWEAVE_CHOICE_TUNE` constants. Three lessons recorded; the tune-UI lesson is the standout (see Lessons).
 - 2026-05-20 — Dev role seeded.

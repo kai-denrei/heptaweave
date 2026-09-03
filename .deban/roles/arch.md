@@ -2,7 +2,7 @@
 role: arch
 owner: claude-on-kainode
 status: active
-last-updated: 2026-05-21
+last-updated: 2026-09-03
 ---
 
 # Architecture — heptaweave
@@ -108,6 +108,7 @@ src/
 - **A localStorage-backed tuning layer between the renderer and the call site is a clean third tier.** — same session. Lets the user dial in values WITHOUT a code change, while keeping the canonical defaults intact for any consumer that doesn't opt in. See [[dev]] Lessons for the methodology note.
 
 ## Open Questions
+- [ ] **Mode shape for to-do 2.** `MODE_CONFIG` today carries only clock/end-condition rules; a mode that swaps which glyph system is the prompt needs one more axis (`promptKind` / `choiceKind`) that both renderers read. Decide whether that axis lives in `MODE_CONFIG` (rules) or in the renderer's own config (presentation) — it is arguably presentation, but the distractor closeness rules may need to differ per glyph system, which would pull it back into rules.  — owner: claude-on-kainode — since: 2026-09-03
 - [ ] Single SVG vs multiple SVGs for the play screen — single is easier for filter sharing, multiple is easier for animating individual choices. Default v1: one SVG for Cistercian, one per choice circle (HTML positioning around them).  — owner: claude-on-kainode — since: 2026-05-20
 - [ ] How close is "magnitude-matched" closeness? Default: distractors within ±25% of target magnitude.  — owner: claude-on-kainode — since: 2026-05-20
 
@@ -120,6 +121,7 @@ Blocked by:
 Feeds into: [[dev]]
 
 ## Session Log
+- 2026-09-03 (ink theme + promotion) — Renderer seam; own fluid engine; analytic dissolve clock; params layer. Ink promoted to default the same day (rename + PWA head; no renderer or rules change — the seam held). Open question for the next pass: a third mode (to-do 2) needs `MODE_CONFIG` to carry which renderer draws the prompt vs the choices, which is the first thing the contract does not currently express.
 - 2026-05-21 (PWA hardening) — SW update lifecycle moved from auto-takeover to opt-in (page-driven `SKIP_WAITING`). Navigation preload enabled. Runtime cache now FIFO-capped at 40. Install affordance gated to game-over with localStorage dismissal. CACHE_VERSION bumped to v2.
 - 2026-05-20 (tune session) — Replaced A/B renderer split with a single canonical `numeralV2.js` port + a project-tune layer (`HEPTAWEAVE_CHOICE_TUNE`) + an optional localStorage override layer for the slider page. Choice layout switched to per-count organic quincunx presets. Two architecture lessons added.
 - 2026-05-20 — Architecture seeded; difficulty table canonical.

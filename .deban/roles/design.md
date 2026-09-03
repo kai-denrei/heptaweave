@@ -2,7 +2,7 @@
 role: design
 owner: claude-on-kainode
 status: active
-last-updated: 2026-05-21
+last-updated: 2026-09-03
 ---
 
 # Design — heptaweave
@@ -46,6 +46,8 @@ Visual language, micro-interactions, accessibility constraints, copy-free UX.
 - **"Organic" layout is achieved by varied positions, not by jitter on a regular grid.** — from the orbital-to-quincunx switch. Even-angle distribution with random offsets still reads as "geometric with noise." True organic feel comes from intentionally non-uniform anchor positions (the mockup's slot pattern), with only TINY jitter on top.
 
 ## Open Questions
+- [ ] **One-trait Cistercian (TO-DO 1).** The accents to remove, inventoried: (1) `cistercianInk.js` drops an `irregularBlob` ink puddle at every non-stave segment endpoint (line ~141) — with polylines shredded into 2-point segments, a digit 9 gets three puddles inside one stroke; (2) both themes taper each segment independently (`lensProfile` in paper, the per-run lens in the ink painter), so every interior joint reads as a fresh stroke start; (3) per-segment perpendicular wobble means the joints do not even meet on a smooth curve. Design question to settle first: per-digit continuity, or one unbroken trait for the whole numeral (see [[pm]]). Note the puddles were deliberate in May ("thickens junctions so a 5 doesn't look thin at the corner") — removing them re-opens the thin-corner problem that they solved, so continuity has to carry that weight instead.  — owner: claude-on-kainode — since: 2026-09-03
+- [ ] **Large-round-glyph mode (TO-DO 2).** If the logogram becomes the prompt, the design questions are: at prompt scale the ensō's tuned proportions (locked 2026-05-20 for ~100 px tiles) will need re-checking at ~300 px; the Cistercian then becomes the choice tile, and it has never been drawn small; and in the ink theme a round prompt dissolves very differently from a stick figure — a closed ring under curl flow collapses into a blob rather than unspooling into filaments (visible in this session's `fluid-ring` test frame). The dissolve-as-timer read may not survive the switch unchanged.  — owner: claude-on-kainode — since: 2026-09-03
 - [ ] Landing layout — vertical stack or horizontal pair? Default v1: vertical, ⧖ on top.  — owner: claude-on-kainode — since: 2026-05-20
 - [ ] Should the binary row "pulse" briefly when a new bit is added? Default v1: yes, 250ms scale ramp on the new bit.  — owner: claude-on-kainode — since: 2026-05-20
 - [ ] Wet-bleed filters on choice circles — full halo+crisp pipeline is expensive at 7-up. Default v1: simplify — crisp only on small choices, halo only on the big Cistercian. — owner: claude-on-kainode — since: 2026-05-20
@@ -58,6 +60,7 @@ Blocked by:
 Feeds into: [[dev]]
 
 ## Session Log
+- 2026-09-03 (ink v1 + promotion) — Ink accepted as v1 and promoted to default; admin panel tabbed and the play stage lifts while it is open. Two to-dos captured with their design consequences: the one-trait Cistercian (accent inventory above; note it re-opens the thin-corner problem the puddles solved) and a large-round-glyph mode (ensō proportions were tuned at tile scale, and a ring dissolves into a blob rather than filaments).
 - 2026-05-21 (PWA hardening) — theme_color flipped to cream paper. prefers-reduced-motion wrap added across all keyframes / transitions. Meta-UI surfaces (update toast, install affordance, offline page) introduced and styled in the cream/ink palette using symbol-only labels (↻ ⤓ ⊘ ✕).
 - 2026-05-20 (tune session) — Layout decision locked (organic quincunx). Cistercian sized up to `min(60vw, 340px)` so it dominates. Score representation fixed to 8-bit LSB-left. Choice-glyph visual constants captured from the user's tune session. Two design lessons added (proportions-as-spec, organic-via-varied-positions).
 - 2026-05-20 — Design role seeded.

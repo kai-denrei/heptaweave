@@ -37,6 +37,14 @@ unchanged at `paper.html` via the existing headless harness.
 
 Hosted: `python3 scripts/dev-server.py 8765` → http://192.168.0.198:8765/
 
+2026-09-03 23:50 — SYNC — verdict: ink v1 accepted ("works well for a v1, we
+will revisit later"), revisit deferred. Touched [[pm]], [[design]], [[dev]],
+[[arch]], `_index.md`. Captured to-do 1 (one-trait Cistercian) and to-do 2
+(large-round-glyph mode) as Open Questions with their intent ambiguity stated
+rather than assumed. Surfaced three unresolved consequences of promoting a
+WebGL theme to default: no-WebGL reachability, prefers-reduced-motion, and
+an unmeasured real-device frame rate. No Dead Ends this session.
+
 ## 2026-05-21 — PWA hardening pass (mobile-pwa skill review)
 
 Touched: [[dev]], [[arch]], [[design]].
