@@ -1,0 +1,37 @@
+<!doctype html><html><head>
+<meta charset="utf-8">
+<style>html,body{margin:0;padding:0;background:#000}</style>
+</head><body>
+<!--
+  Headless harness for ink.html. Query params:
+    mode=TIMED|ENDLESS   click this mode button after boot (default ENDLESS)
+    p=<base64url diff>   params to pass through in the hash (e.g. pinTier)
+    pick=<n>             after `pickAt` ms, click choice tile n (0-based)
+    pickAt=<ms>          default 2500
+    test=1               open the test sheet
+  Screenshot timing is the runner's --virtual-time-budget.
+-->
+<iframe id="frame" style="width:420px;height:920px;border:0;display:block"></iframe>
+<script>
+const q = new URLSearchParams(location.search);
+const hashParts = [];
+if (q.get('p')) hashParts.push('p=' + q.get('p'));
+if (q.get('test')) hashParts.push('test');
+const f = document.getElementById('frame');
+f.src = '../ink.html' + (hashParts.length ? '#' + hashParts.join('&') : '');
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const doc = f.contentDocument;
+    const mode = q.get('mode') || 'ENDLESS';
+    const btn = doc.querySelector(`.mode-btn[data-mode="${mode}"]`);
+    if (btn) btn.click();
+    if (q.get('pick') !== null) {
+      setTimeout(() => {
+        const tiles = doc.querySelectorAll('.choice-tile');
+        const t = tiles[Number(q.get('pick'))];
+        if (t) t.click();
+      }, Number(q.get('pickAt') || 2500));
+    }
+  }, 400);
+});
+</script></body></html>

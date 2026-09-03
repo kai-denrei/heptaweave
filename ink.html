@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>heptaweave · ink</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#08090d" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="icon" href="data:," />
+
+  <style>
+    :root {
+      --bg: #08090d;
+      --ink: #fbf7ee;       /* set from the palette's core stop at runtime */
+      --glow: #a8abb4;      /* palette's second stop */
+      --ember: #a83a2b;
+      --dim: rgba(255,255,255,0.44);
+      --faint: rgba(255,255,255,0.18);
+      --hair: rgba(255,255,255,0.09);
+      --ease-out: cubic-bezier(.16,1,.3,1);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+      height: 100vh; height: 100dvh;
+      overflow: hidden;
+      touch-action: manipulation;
+      user-select: none; -webkit-user-select: none;
+    }
+    canvas#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+
+    .app { position: relative; width: 100%; height: 100%; }
+    .screen { position: absolute; inset: 0; z-index: 2; }
+    .screen[hidden] { display: none !important; }
+
+    /* ====== LANDING ====== */
+    .landing {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 48px;
+    }
+    .mode-btn {
+      font: 400 96px/1 "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", ui-serif, serif;
+      color: var(--ink);
+      background: transparent;
+      border: none;
+      padding: 24px 32px;
+      cursor: pointer;
+      opacity: 0.82;
+      filter: drop-shadow(0 0 10px var(--glow));
+      transition: transform 120ms var(--ease-out), opacity 200ms;
+    }
+    .mode-btn:hover, .mode-btn:active { opacity: 1; transform: scale(1.04); }
+    .mode-btn[data-mode="ENDLESS"] { font-size: 112px; }
+    .corner-hold {
+      position: absolute; right: 0; bottom: 0;
+      width: 72px; height: 72px;
+      background: transparent; border: none; cursor: default;
+    }
+    /* Small link back to the paper theme: a hollow square, bottom-left. */
+    .paper-link {
+      position: absolute; left: 14px; bottom: max(14px, env(safe-area-inset-bottom));
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--faint); text-decoration: none;
+      font: 400 22px/1 "Apple Symbols", "Segoe UI Symbol", ui-serif, serif;
+    }
+    .paper-link:hover { color: var(--dim); }
+
+    /* ====== PLAY ====== */
+    .play {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+      gap: 2px;
+      pointer-events: none;
+    }
+    .play-top { position: relative; height: 56px; }
+    .score-row {
+      position: absolute;
+      left: max(8px, env(safe-area-inset-left)); top: 8px; height: 28px;
+      color: var(--ink);
+      filter: drop-shadow(0 0 6px var(--glow));
+    }
+    .score-row svg { overflow: visible; display: block; }
+    .score-row .new-bit { animation: bitPop 260ms ease-out both; transform-box: fill-box; transform-origin: center; }
+    @keyframes bitPop {
+      0%   { transform: scale(0.25); opacity: 0; }
+      50%  { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .play-mid { position: relative; min-height: 0; height: 100%; }
+    .choices { position: absolute; inset: 0; z-index: 1; }
+    .choice-tile {
+      position: absolute;
+      background: transparent; border: none; border-radius: 50%; padding: 0;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink);
+      pointer-events: auto;
+      opacity: 0.92;
+      filter: drop-shadow(0 0 7px var(--glow));
+      transition: transform 80ms ease-out, opacity 500ms var(--ease-out), filter 300ms;
+    }
+    .choice-tile:active { transform: scale(0.95); }
+    .choice-tile.recede { opacity: 0.12; filter: none; }
+    .choice-tile.correct { animation: pickCorrect 700ms var(--ease-out) forwards; }
+    .choice-tile.wrong   { color: var(--ember); filter: drop-shadow(0 0 10px var(--ember)); animation: pickWrong 700ms ease-out forwards; }
+    @keyframes pickCorrect {
+      0%   { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 14px var(--ink)); }
+      100% { opacity: 0; transform: scale(1.12); filter: drop-shadow(0 0 0 var(--ink)); }
+    }
+    @keyframes pickWrong {
+      0%   { transform: translateX(0); }
+      20%  { transform: translateX(-4px); }
+      40%  { transform: translateX(4px); }
+      60%  { transform: translateX(-2px); }
+      80%  { transform: translateX(2px); }
+      100% { transform: translateX(0); opacity: 0.35; }
+    }
+
+    /* ====== GAME OVER ====== */
+    .gameover {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 18px; padding: 12px;
+      cursor: pointer; overflow: auto;
+      color: var(--ink);
+    }
+    .gameover-dot svg { width: 56px; height: 56px; overflow: visible; filter: drop-shadow(0 0 8px currentColor); }
+    .score-trinity { display: flex; flex-direction: column; align-items: center; gap: 14px; filter: drop-shadow(0 0 8px var(--glow)); }
+    .big-binary { width: min(86vw, 440px); height: 64px; display: flex; align-items: center; justify-content: center; }
+    .big-binary svg { width: 100%; height: 100%; overflow: visible; }
+    .big-heptacipher, .big-cistercian {
+      width: min(58vw, 230px); height: min(58vw, 230px);
+      display: flex; align-items: center; justify-content: center; overflow: visible;
+    }
+    .big-heptacipher svg, .big-cistercian svg { overflow: visible; }
+    .install-affordance {
+      margin-top: 4px; width: 56px; height: 56px; border-radius: 50%;
+      border: 1px solid var(--hair); background: transparent; color: var(--ink);
+      font: 400 30px/1 "Apple Symbols", "Segoe UI Symbol", ui-serif, serif;
+      display: flex; align-items: center; justify-content: center; opacity: 0.55; cursor: pointer;
+    }
+    .install-affordance[hidden] { display: none; }
+
+    /* ====== NO WEBGL ====== */
+    .nogl {
+      position: absolute; inset: 0; z-index: 5;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+      color: var(--dim);
+      font: 400 72px/1 "Apple Symbols", "Segoe UI Symbol", ui-serif, serif;
+    }
+    .nogl a { color: var(--ink); text-decoration: none; font-size: 40px; }
+    .nogl[hidden] { display: none; }
+
+    /* ====== TEST SHEET (dev surface — text allowed) ====== */
+    .test-sheet {
+      position: fixed; left: 50%; bottom: 0; transform: translateX(-50%);
+      width: min(100vw, 560px); max-height: 72vh;
+      z-index: 20;
+      display: flex; flex-direction: column;
+      background: rgba(14, 15, 20, 0.86);
+      backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      border: 1px solid var(--hair); border-bottom: none;
+      border-radius: 18px 18px 0 0;
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
+      color: rgba(255,255,255,0.78);
+      font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+      pointer-events: auto;
+    }
+    .test-sheet[hidden] { display: none; }
+    .test-sheet.collapsed .ts-body { display: none; }
+    .ts-handle {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; cursor: pointer; flex: none;
+    }
+    .ts-grip { width: 34px; height: 4px; border-radius: 2px; background: var(--faint); }
+    .ts-title { flex: 1; letter-spacing: 0.12em; text-transform: uppercase; font-size: 10px; color: var(--dim); }
+    .ts-close { color: var(--dim); padding: 4px 6px; }
+    .ts-body { overflow-y: auto; padding: 0 14px max(14px, env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+    .ts-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .ts-name {
+      flex: 1; min-width: 120px; padding: 8px 10px;
+      background: rgba(255,255,255,0.06); border: 1px solid var(--hair); border-radius: 8px;
+      color: inherit; font: inherit; outline: none;
+    }
+    .ts-btn {
+      padding: 8px 12px; border-radius: 8px; border: 1px solid var(--hair);
+      background: rgba(255,255,255,0.07); color: inherit; font: inherit; cursor: pointer;
+    }
+    .ts-btn:active { background: rgba(255,255,255,0.14); }
+    .ts-warn { color: #f0a08a; }
+    .ts-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .ts-preset { display: inline-flex; }
+    .ts-load { border-radius: 8px 0 0 8px; }
+    .ts-preset .ts-load:only-child { border-radius: 8px; }
+    .ts-del { border-radius: 0 8px 8px 0; border-left: none; color: #f0a08a; padding: 8px 9px; }
+    .ts-status { margin-top: 6px; min-height: 14px; color: var(--dim); font-size: 11px; }
+    .ts-section {
+      margin: 14px 0 2px; padding-bottom: 4px;
+      border-bottom: 1px solid var(--hair);
+      font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim);
+    }
+    .ts-slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; padding: 5px 0; }
+    .ts-label { color: rgba(255,255,255,0.7); }
+    .ts-val { color: var(--ink); min-width: 48px; text-align: right; }
+    .ts-slider input[type=range] {
+      grid-column: 1 / span 2; width: 100%; height: 26px; margin: 0;
+      -webkit-appearance: none; appearance: none; background: transparent;
+    }
+    .ts-slider input[type=range]::-webkit-slider-runnable-track { height: 3px; background: var(--faint); border-radius: 2px; }
+    .ts-slider input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px; margin-top: -8.5px;
+      border-radius: 50%; background: var(--ink); border: 2px solid var(--bg);
+      box-shadow: 0 0 8px var(--glow);
+    }
+    .ts-slider input[type=range]::-moz-range-track { height: 3px; background: var(--faint); border-radius: 2px; }
+    .ts-slider input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--ink); border: 2px solid var(--bg); }
+    .ts-dump { margin: 12px 0 0; padding: 8px; background: rgba(255,255,255,0.04); border-radius: 6px; font-size: 10px; white-space: pre-wrap; word-break: break-all; color: var(--dim); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .choice-tile, .mode-btn { transition: none; }
+      .choice-tile.correct, .choice-tile.wrong { animation: none; }
+      .score-row .new-bit { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div class="app">
+
+    <section class="screen landing" id="screenLanding">
+      <button class="mode-btn" data-mode="TIMED" aria-label="Timed mode">⧖</button>
+      <button class="mode-btn" data-mode="ENDLESS" aria-label="Endless mode">∞</button>
+      <a class="paper-link" href="index.html" aria-label="paper theme">▢</a>
+      <button class="corner-hold" id="cornerHold" aria-hidden="true" tabindex="-1"></button>
+    </section>
+
+    <section class="screen play" id="screenPlay" hidden>
+      <div class="play-top">
+        <div class="score-row" id="scoreRow"></div>
+      </div>
+      <div class="play-mid" id="playMid">
+        <div class="choices" id="choices"></div>
+      </div>
+    </section>
+
+    <section class="screen gameover" id="screenGameOver" hidden>
+      <div class="gameover-dot" id="gameOverDot"></div>
+      <div class="score-trinity">
+        <div class="big-binary" id="bigBinary"></div>
+        <div class="big-heptacipher" id="bigHeptacipher"></div>
+        <div class="big-cistercian" id="bigCistercian"></div>
+      </div>
+      <button class="install-affordance" id="installAffordance" type="button" aria-label="install" hidden>⤓</button>
+    </section>
+
+    <div class="nogl" id="nogl" hidden>
+      <span aria-hidden="true">⊘</span>
+      <a href="index.html" aria-label="paper theme">▢</a>
+    </div>
+  </div>
+
+  <script type="module">
+    const v = String(Date.now());
+    const [{ boot }, { createInkRenderer }, { createParams }, { createTestPanel }] = await Promise.all([
+      import(`./src/main.js?v=${v}`),
+      import(`./src/render/ink/inkRenderer.js?v=${v}`),
+      import(`./src/params.js?v=${v}`),
+      import(`./src/test/testPanel.js?v=${v}`),
+    ]);
+
+    const params = createParams({ hash: location.hash });
+    const renderer = createInkRenderer({ params });
+    let panel = null;
+    const app = boot({
+      renderer,
+      params,
+      onCornerHold: () => { if (panel) panel.toggle(); },
+    });
+    if (!renderer.ok) {
+      document.getElementById('nogl').hidden = false;
+      for (const s of document.querySelectorAll('.screen')) s.hidden = true;
+    } else {
+      panel = createTestPanel({ params, root: document.body });
+      if (/(^#|&)test(&|$)/.test(location.hash)) panel.show();
+      window.heptaweave = { params, renderer, panel, app };
+    }
+  </script>
+</body>
+</html>

@@ -136,12 +136,11 @@ export function createPainter({ fluid, params }) {
      * Sample an SVG's paths (client space) and splat them in one frame —
      * the pick reaction for a choice logogram.
      */
-    splashSvg(svgEl, rgb, { amount, radiusFrac, spacingPx = 4 } = {}) {
+    splashSvg(svgEl, rgb, { amount, radiusPx, spacingPx = 4 } = {}) {
       const rect = fluid.canvasHeightCss();
       const color = [rgb[0] * COLOR_GAIN, rgb[1] * COLOR_GAIN, rgb[2] * COLOR_GAIN];
       const paths = svgEl.querySelectorAll('path');
-      const tileRect = svgEl.getBoundingClientRect();
-      const radius = (radiusFrac * (tileRect.width || 100)) / rect;
+      const radius = Math.max(0.5, radiusPx) / rect;
       let budget = 600; // cap splats per splash
       for (const path of paths) {
         let ctm;
