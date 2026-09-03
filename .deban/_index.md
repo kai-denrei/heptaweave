@@ -51,12 +51,15 @@ renderers (lobes-only and full mini) toggleable via a long-press on landing.
   generalised.
 
 ## Open Questions (cross-role)
-- **Next pass (captured 2026-09-03):** (1) a one-trait Cistercian — no
-  per-segment accents; intent to settle is per-digit continuity vs one
-  unbroken stroke ([[pm]], mechanism in [[dev]], accent inventory in
-  [[design]]). (2) A game mode built around large round glyphs — assumed to
-  mean the logogram becomes the prompt and the Cistercian the choice;
-  confirm before building ([[pm]], [[arch]] for the mode axis).
+- **Next pass (captured 2026-09-03, intents now resolved):** (1) The
+  Cistercian becomes ONE unbroken trait grown radially from the centre of the
+  stem, stem and four digits written simultaneously — no accents. Blocking
+  sub-question: digit 6's bar attaches to the stave nowhere, so it cannot be
+  reached by a front rooted at the stem ([[pm]]); mechanism is a
+  connected-figure-with-distance-from-root builder ([[dev]]). (2) The round-glyph
+  mode starts as the **inversion** — logogram as prompt, Cistercian as choices.
+  Open: whether it is a third mode or a modifier orthogonal to ⧖/∞, and whether
+  the closeness table transfers ([[pm]], [[arch]]).
 - **Consequences of making a WebGL theme the default, unresolved:** no-WebGL
   devices land on the ⊘ sigil instead of the playable paper theme;
   `prefers-reduced-motion` is not honored by the fluid; real-device frame

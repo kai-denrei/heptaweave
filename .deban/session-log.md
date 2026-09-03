@@ -45,6 +45,15 @@ rather than assumed. Surfaced three unresolved consequences of promoting a
 WebGL theme to default: no-WebGL reachability, prefers-reduced-motion, and
 an unmeasured real-device frame rate. No Dead Ends this session.
 
+2026-09-03 23:57 — SYNC — both to-do intents resolved by the operator and
+moved from Open Questions to Decisions in [[pm]], [[design]], [[dev]],
+[[arch]], `_index.md`. To-do 1: one unbroken trait grown radially from the
+stem's centre (a third option, neither of the two I proposed). To-do 2: the
+inversion, as a starting point. Two blocking follow-ups surfaced that the
+answers do not cover — digit 6 is topologically unreachable from the stem
+(≈34% of numerals contain one), and the inverted mode looks like a modifier
+on ⧖/∞ rather than a third mode. Nothing built; no Dead Ends.
+
 ## 2026-05-21 — PWA hardening pass (mobile-pwa skill review)
 
 Touched: [[dev]], [[arch]], [[design]].
