@@ -107,6 +107,16 @@ console.log('\nbuildRound');
   const rng2 = createRng(0xbeef);
   const r2 = buildRound({ score: 64, rng: rng2 });
   ok('tier 7 has 7 choices', r2.choices.length === 7);
+
+  // Test-mode overrides.
+  const r3 = buildRound({ score: 0, rng: createRng(5), overrides: { pinTier: 7 } });
+  ok('pinTier 7 at score 0 → tier 7, 7 choices, 2500ms', r3.tier === 7 && r3.choices.length === 7 && r3.revealMs === 2500);
+  const r4 = buildRound({ score: 0, rng: createRng(6), overrides: { choiceCount: 5 } });
+  ok('choiceCount override 5 at tier 0', r4.choices.length === 5 && r4.tier === 0);
+  const r5 = buildRound({ score: 0, rng: createRng(7), overrides: { pinTier: -1, choiceCount: 0, sharedDigits: -1 } });
+  ok('neutral overrides = table', r5.tier === 0 && r5.choices.length === 2);
+  const r6 = buildRound({ score: 0, rng: createRng(8), overrides: { sharedDigits: 3, choiceCount: 4 } });
+  ok('sharedDigits override honoured', r6.sharedDigits === 3 && r6.choices.length === 4);
 }
 
 console.log('\nmorse patterns');

@@ -90,8 +90,8 @@
     }
     .mode-btn:hover, .mode-btn:active { opacity: 1; transform: scale(1.04); }
     .mode-btn[data-mode="ENDLESS"] { font-size: 112px; }
-    /* Invisible long-press target for A/B toggle, bottom-right corner. */
-    .ab-toggle {
+    /* Invisible long-press target, bottom-right corner (themes may use it). */
+    .corner-hold {
       position: absolute;
       right: 0; bottom: 0;
       width: 64px; height: 64px;
@@ -100,17 +100,6 @@
       cursor: default;
       -webkit-tap-highlight-color: transparent;
     }
-    .ab-indicator {
-      position: absolute;
-      right: 14px; bottom: 14px;
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--muted);
-      opacity: 0.22;
-      pointer-events: none;
-      transition: background 200ms, opacity 200ms;
-    }
-    .ab-indicator.flipped { background: var(--accent); opacity: 0.55; }
 
     /* ====== PLAY ====== */
     .play {
@@ -340,8 +329,8 @@
     <section class="screen landing" id="screenLanding">
       <button class="mode-btn" data-mode="TIMED" aria-label="Timed mode">⧖</button>
       <button class="mode-btn" data-mode="ENDLESS" aria-label="Endless mode">∞</button>
-      <span class="ab-indicator" id="abIndicator" hidden></span>
-      <button class="ab-toggle" id="abToggle" aria-hidden="true" tabindex="-1" hidden></button>
+      <!-- Invisible 1 s long-press target, bottom-right. Unused in paper. -->
+      <button class="corner-hold" id="cornerHold" aria-hidden="true" tabindex="-1"></button>
     </section>
 
     <!-- PLAY -->
@@ -456,8 +445,11 @@
     }
 
     const cb = document.querySelector('meta[name="cb"]')?.content || String(Date.now());
-    const { boot } = await import(`./src/main.js?v=${cb}`);
-    boot();
+    const [{ boot }, { createPaperRenderer }] = await Promise.all([
+      import(`./src/main.js?v=${cb}`),
+      import(`./src/render/paper/paperRenderer.js?v=${cb}`),
+    ]);
+    boot({ renderer: createPaperRenderer() });
   </script>
 </body>
 </html>
