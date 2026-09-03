@@ -12,6 +12,7 @@
   Screenshot timing is the runner's --virtual-time-budget.
 -->
 <iframe id="frame" style="width:420px;height:920px;border:0;display:block"></iframe>
+<pre id="stats" style="position:fixed;left:0;top:0;margin:0;font:10px monospace;color:#0f0;background:transparent"></pre>
 <script>
 const q = new URLSearchParams(location.search);
 const hashParts = [];
@@ -19,6 +20,14 @@ if (q.get('p')) hashParts.push('p=' + q.get('p'));
 if (q.get('test')) hashParts.push('test');
 const f = document.getElementById('frame');
 f.src = '../ink.html' + (hashParts.length ? '#' + hashParts.join('&') : '');
+setInterval(() => {
+  const h = f.contentWindow && f.contentWindow.heptaweave;
+  if (!h) return;
+  const d = h.renderer.debug;
+  const span = (d.lastNow - d.firstNow) / 1000;
+  document.getElementById('stats').textContent =
+    `frames=${d.frames} steps=${d.steps} span=${span.toFixed(2)}s steps/s=${(d.steps / (span || 1)).toFixed(1)} phase=${d.phase} dissip=${d.dissip}`;
+}, 100);
 window.addEventListener('load', () => {
   setTimeout(() => {
     const doc = f.contentDocument;

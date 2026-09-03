@@ -57,6 +57,7 @@ export function createInkRenderer({ params }) {
   let screen = 'landing';
   let run = { mode: null, timeRemainingMs: 0, totalMs: 0 };
   let wispAcc = 0;
+  const debug = { frames: 0, steps: 0, firstNow: 0, lastNow: 0, get phase() { return phase; }, get dissip() { return glyph ? glyph.dissip : null; } };
 
   // --------------------------------------------------------------------------
   // Palette → CSS
@@ -100,11 +101,16 @@ export function createInkRenderer({ params }) {
     if (glyph.stays) return 1;
     return glyph.dissip;
   }
+  // Current scales with the clock: a glyph with a long life drifts slowly,
+  // one with seconds left unspools fast. `flowRefSeconds` is the dissolve
+  // time at which the current runs at full `flowStrength`.
   function targetFlowStr() {
     const f = params.get('flowStrength');
     if (!glyph) return f * 0.6;
     if (glyph.stays) return f * params.get('staysFlow');
-    return f;
+    const ref = params.get('flowRefSeconds');
+    const factor = Math.max(params.get('flowMin'), Math.min(3, ref / Math.max(0.1, glyph.seconds)));
+    return f * factor;
   }
 
   function stepConfig(now) {
@@ -141,6 +147,7 @@ export function createInkRenderer({ params }) {
     let dt = (now - lastNow) / 1000;
     lastNow = now;
     if (dt > 0.1) dt = 0.1;
+    debug.frames++; debug.lastNow = now; if (!debug.firstNow) debug.firstNow = now;
 
     // Painter first, so a stroke lands before this frame's advection.
     if (phase === 'paint') {
@@ -163,7 +170,7 @@ export function createInkRenderer({ params }) {
     while (acc >= FIXED && steps < 3) {
       fluid.step(FIXED, cfg);
       if (now < drainUntil) fluid.drain(drainDissip, cfg);
-      acc -= FIXED; steps++;
+      acc -= FIXED; steps++; debug.steps++;
     }
 
     fluid.render({
@@ -298,16 +305,17 @@ export function createInkRenderer({ params }) {
   function paintPrompt({ number, seed, revealMs, mode, timeRemainingMs, totalMs }) {
     run = { mode, timeRemainingMs, totalMs };
     const floor = params.get('dissolveFloor');
-    let dissip = 1, stays = false;
+    let dissip = 1, stays = false, seconds = 0;
     if (mode === 'TIMED') {
-      const secs = (timeRemainingMs / 1000) * params.get('timedScale');
-      dissip = dissipFor(secs, floor);
+      seconds = (timeRemainingMs / 1000) * params.get('timedScale');
+      dissip = dissipFor(seconds, floor);
     } else if (revealMs > 0) {
-      dissip = dissipFor((revealMs / 1000) * params.get('revealScale'), floor);
+      seconds = (revealMs / 1000) * params.get('revealScale');
+      dissip = dissipFor(seconds, floor);
     } else {
       stays = true;
     }
-    glyph = { number, seed, mode, revealMs, dissip, stays };
+    glyph = { number, seed, mode, revealMs, dissip, stays, seconds };
     painter.begin({ number, box: promptBox(), seed, rgb: coreRgb() });
     phase = 'paint';
     phaseStart = performance.now();
@@ -332,6 +340,7 @@ export function createInkRenderer({ params }) {
     delays: { correct: 700, wrongContinue: 900, wrongEnd: 1200 },
 
     get ok() { return !!(fluid && fluid.ok); },
+    get debug() { return debug; },
 
     mount({ on }) {
       els = {

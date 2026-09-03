@@ -43,6 +43,7 @@ Implementation details, file-level conventions, build/test commands, dev-server.
 | 2026-05-20 | Even-angle orbital layout (tiles evenly distributed on an ellipse around the Cistercian). | User mockup shows an organic quincunx (4 corners + bottom-center for 5 choices), not even spacing. Replaced with per-count slot presets matching the mockup's uneven layout. |
 
 ## Lessons
+- **Headless Chrome's `--virtual-time-budget` starves requestAnimationFrame.** — from the ink theme, 2026-09-03. 8.5 s of budget delivered 3 rAF frames; every "later" screenshot was really the first frame. For anything animated, launch Chrome with `--remote-debugging-port`, drive it over CDP, and wait on the wall clock (`scripts/ink-cdp-shots.mjs`). Also: put `--screenshot=` before `--virtual-time-budget=` or `--window-size` is ignored.
 - Verbatim ports across differing folder layouts need an import-rewrite pass.
 - Chrome's dynamic-import error message is unhelpful; cascade-import each file in isolation to find the broken one.
 - **mobile-pwa skill review found 8 actionable items; addressing all of them in one pass.** — 2026-05-21. A single-skill audit before declaring "PWA done" caught: unconditional skipWaiting, no offline page, missing raster icons, no navigation preload, unbounded cache, wrong theme color, missing prefers-reduced-motion, no install affordance. None of these would have shown up in functional testing — they're cross-cutting hygiene the skill specifically calls out. **Run the skill review explicitly as a checklist step before declaring a PWA shipped.**

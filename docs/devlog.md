@@ -43,6 +43,14 @@ Parallel brushes (all segments at once) + frozen dissipation while
 painting, so the first stroke cannot fade before the last lands. Sequential
 trace kept as a test-mode option because the freeze makes it safe.
 
+### Prototype status (end of 2026-09-03 session)
+
+Landed: `ink.html` + test mode + presets, verified with real-time CDP frames.
+First-pass defaults tuned from frames only (`current` 75, clock-scaled flow);
+the phone is the real acceptance test. Things to try next, in the sheet:
+`flowScale` 3–4 for tighter eddies, `strokeRadius`/`strokeAmount` for a
+thinner brush, `holdMs` longer at low tiers, palettes 1–4.
+
 ### Licensing
 
 Upstream `ink-flow` demo has no license; heptaweave is public. The fluid

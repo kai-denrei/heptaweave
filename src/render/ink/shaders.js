@@ -131,6 +131,7 @@ uniform float u_bloomGain;
 uniform float u_bloomMix;
 uniform float u_vig;
 uniform float u_light;
+uniform vec3  u_core;     // palette core colour; injected colour is measured against it
 
 vec3 lut(float x) { return texture2D(u_lut, vec2(clamp(x, 0.002, 0.998), 0.5)).rgb; }
 float rnd(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -156,6 +157,12 @@ void main() {
   float density = clamp(dens * 1.6, 0.0, 1.0);
   float coord = clamp(0.5 * (1.0 - core) + 0.5 * (1.0 - clamp(dens * 3.5, 0.0, 1.0)), 0.0, 1.0);
   vec3 col = lut(coord);
+  // Hue carried by the dye: ink injected in the palette's core colour leaves
+  // the LUT untouched; ink injected in another colour (the wrong-answer
+  // ember) tints it by the ratio.
+  vec3 tint = dye.rgb / (dens * 3.0 + 0.0004);
+  vec3 ratio = clamp(tint / max(u_core, vec3(0.05)), 0.0, 1.6);
+  col *= mix(vec3(1.0), ratio, clamp(dens * 6.0, 0.0, 1.0));
 
   float I = pow(density, 0.72);
   vec3 ink = col * I;

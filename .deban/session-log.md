@@ -4,6 +4,31 @@ Append-only. Newest at top.
 
 ---
 
+## 2026-09-03 — ink theme prototype (experimental page, test mode, presets)
+
+Touched: [[arch]], [[design]], [[dev]], `docs/devlog.md`, spec + plan under `docs/superpowers/`.
+
+- **Renderer seam.** `main.js` rules-only; paper renderer extracted verbatim
+  (headless screenshot confirms the paper play screen unchanged). Dead A/B
+  toggle removed; corner-hold region kept for themes.
+- **Ink theme** at `ink.html`: own WebGL dye engine, glyph painter (parallel
+  brush trace of Cistercian segments), choreography paint→hold→ramp→flow,
+  ⧖ dissolve = run clock + dimming, ∞ dissolve = reveal clock, stays-tier
+  re-ink, feedback splash (hue-carrying dye), ambient wisps, no-WebGL sigil.
+- **Test mode + presets:** `params.js` schema (45 knobs), bottom-sheet panel,
+  local/shipped presets, share URL. Rules overrides wired through buildRound.
+- **Verification:** `smoke-pure.mjs` extended (overrides, codec, overlay,
+  dissipFor). Real-time frames via `scripts/ink-cdp-shots.mjs` (CDP + wall
+  clock): ∞ tier 5 glyph painted at 1.3 s, blurred at 3 s, gone by 6 s;
+  ⧖ glyph holds shape at 8 s; wrong pick = ember splash + drain; game-over
+  trinity renders. Chrome MCP extension was not connected this session.
+- **Tuning from frames:** `current` 300→75 and clock-scaled flow strength
+  (the first pass swept the glyph off-screen in under a second).
+- **Lesson (dev):** headless `--virtual-time-budget` starves rAF (3 frames in
+  8.5 s of budget) — never judge animation from it; drive CDP with real waits.
+
+Hosted: `python3 scripts/dev-server.py 8765` → http://192.168.0.198:8765/ink.html
+
 ## 2026-05-21 — PWA hardening pass (mobile-pwa skill review)
 
 Touched: [[dev]], [[arch]], [[design]].

@@ -10,11 +10,11 @@ export const SHIPPED_PRESETS = [
   { name: 'default', diff: {} },
   {
     name: 'still water',
-    diff: { flowStrength: 0.6, current: 200, holdMs: 1200, rampMs: 1500, filament: 0.9 },
+    diff: { flowStrength: 0.6, current: 40, holdMs: 1200, rampMs: 1500, filament: 0.9 },
   },
   {
     name: 'rapids',
-    diff: { flowStrength: 2.4, current: 520, filament: 0.35, octaves: 4, holdMs: 200, rampMs: 300 },
+    diff: { flowStrength: 2.0, current: 220, filament: 0.35, octaves: 4, holdMs: 200, rampMs: 300 },
   },
   {
     name: 'thick ink',

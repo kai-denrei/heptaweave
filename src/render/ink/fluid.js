@@ -305,6 +305,7 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     gl.uniform1f(progDisplay.u.u_bloomMix, cfg.bloomMix ?? 1.2);
     gl.uniform1f(progDisplay.u.u_vig, cfg.vignette ?? 1.15);
     gl.uniform1f(progDisplay.u.u_light, cfg.light ?? 1);
+    gl.uniform3f(progDisplay.u.u_core, lut[0], lut[1], lut[2]);
     drawQuad();
   }
 

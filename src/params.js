@@ -11,9 +11,9 @@
 // [group, key, label, min, max, step, default]
 export const SCHEMA = [
   // ---- fluid: the water itself ------------------------------------------
-  ['fluid', 'flowStrength',  'flow strength',        0,     3,    0.05,  1.4],
+  ['fluid', 'flowStrength',  'flow strength',        0,     3,    0.05,  1.2],
   ['fluid', 'flowScale',     'flow scale',           0.4,   6,    0.1,   2.4],
-  ['fluid', 'current',       'current (back-trace)', 60,    700,  10,    300],
+  ['fluid', 'current',       'current (drift)',      10,    700,  5,     75],
   ['fluid', 'filament',      'filament width',       0.15,  1.75, 0.05,  0.6],
   ['fluid', 'octaves',       'noise octaves',        1,     5,    1,     3],
   ['fluid', 'simScale',      'sim resolution',       0.25,  1,    0.05,  0.5],
@@ -27,6 +27,8 @@ export const SCHEMA = [
   ['dissolve', 'staysFlow',      'stays: drift',         0,     1,    0.05,  0.15],
   ['dissolve', 'staysReinkMs',   'stays: re-ink (ms)',   0,     5000, 100,   1500],
   ['dissolve', 'timedScale',     '⧖ dissolve × remaining', 0.1, 1,    0.05,  1],
+  ['dissolve', 'flowRefSeconds', 'full current at (s)',  0.5,   20,   0.5,   4],
+  ['dissolve', 'flowMin',        'slowest current ×',    0,     1,    0.05,  0.15],
 
   // ---- paint: how the glyph is written ----------------------------------
   ['paint', 'traceMs',       'trace time (ms)',      100,   3000, 50,    700],
