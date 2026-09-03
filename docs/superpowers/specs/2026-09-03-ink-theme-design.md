@@ -22,6 +22,7 @@ locally, ship with the app, and share as a URL.
 | 1 | Dissolve = **run timer in ⧖**, **reveal timer in ∞**. Different modes, different clocks. | — |
 | 2 | Choices are **overlaid SVG** (existing `numeralV2`) restyled for the dark stage; on tap the picked glyph is **splatted into the fluid** as feedback (bright bloom drifting off = correct; red splash + drain pulse = wrong). | A: overlay only. B: choices painted into the fluid and re-inked. |
 | 3 | Separate `ink.html` now; `main.js` refactored so the theme is an injected **renderer**. A landing toggle later is a two-line change. | — |
+| 3b | **Superseded 2026-09-03 (same day):** the ink theme became the default. `ink.html` → `index.html`, old paper page → `paper.html`. The test panel became the **admin** panel (`#admin`, legacy `#test` still works) with a tab per parameter group. | — |
 | 4 | Presets: URL hash for sharing + localStorage named slots + a committed `presets.js` list shipped with the app. | — |
 | 5 | Glyph is **traced** by parallel brushes (all segments at once, finishing together), then **held** crisp in still water, then the current ramps up and it unspools. **Nothing dissipates until the whole glyph is painted.** Sequential trace remains a test-mode option. | — |
 | 6 | Own implementation of the fluid technique — the upstream demo carries no license and heptaweave is public. | — |
@@ -48,10 +49,10 @@ src/
                            → splat schedule; SVG path sampler for the
                            heptacipher feedback splash
   test/
-    testPanel.js           slider sheet, presets UI, share link
+    adminPanel.js          slider sheet (tabbed), presets UI, share link
     presets.js             shipped named presets
-index.html                 boots paper renderer (behaviour unchanged)
-ink.html                   boots ink renderer; `#test` opens the panel
+index.html                 boots ink renderer (default); `#admin` opens the panel
+paper.html                 boots paper renderer (behaviour unchanged)
 ```
 
 ### Renderer contract
@@ -187,7 +188,7 @@ stage; the fluid keeps drifting underneath at idle current.
 
 ### Test mode
 
-Opened by `ink.html#test` or a 1 s long-press on the landing's bottom-right
+Opened by `#admin` (legacy `#test`) or a 1 s long-press on the landing's bottom-right
 corner (the region already exists). A bottom sheet over the play surface:
 grouped sliders (one per `params` row), live; a preset row: name field,
 save, load/delete for local slots, the shipped list, **copy link** (writes
@@ -209,8 +210,8 @@ this list.
 
 ## Error handling
 
-- No WebGL / FBO not renderable → `ink.html` shows the ⊘ sigil and a link
-  glyph back to `index.html`. No 2D fallback in v1.
+- No WebGL / FBO not renderable → the page shows the ⊘ sigil and a link
+  glyph to `paper.html`. No 2D fallback in v1.
 - Context loss → re-init engine, re-paint the current prompt (painter keeps
   the current glyph description).
 - Malformed `#p=` → ignored, defaults used.
@@ -222,7 +223,7 @@ this list.
   choiceCount, sharedDigits), `params` overlay + URL codec round-trip,
   `dissipFor(seconds)` math.
 - `scripts/ink-screenshot.html` + headless Chrome (`--use-angle=swiftshader`
-  or `--enable-unsafe-swiftshader`) — boots `ink.html`, starts ∞, waits
+  or `--enable-unsafe-swiftshader`) — boots the ink page, starts ∞, waits
   through trace/hold, screenshots at 3 points (painted, half-dissolved,
   gone). Also the paper page after the refactor: pixel-equivalent to today.
 - Manual on phone via the dev server: the actual acceptance test.

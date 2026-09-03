@@ -11,13 +11,14 @@
 // an in-app toast, and ONLY when the user opts in we post `SKIP_WAITING` to the
 // new worker so it activates and the page reloads on `controllerchange`.
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const STATIC_CACHE  = `heptaweave-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `heptaweave-runtime-${CACHE_VERSION}`;
 
 // Precache the boot HTML, manifest, brand icons, and the styled offline page.
 const PRECACHE = [
   './index.html',
+  './paper.html',
   './manifest.webmanifest',
   './icon.svg',
   './offline.html',
@@ -68,11 +69,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // The experimental ink page (ink.html) is never cached — and neither is
-  // anything it loads — so theme work iterates without SW staleness. The
-  // paper app's caches are untouched.
-  if (url.pathname.endsWith('/ink.html')) return;
-
   let strategy = null;
   if (req.mode === 'navigate' || req.destination === 'document') {
     strategy = () => networkFirst(event, 3000);
@@ -83,14 +79,9 @@ self.addEventListener('fetch', (event) => {
   }
   if (!strategy) return;
 
-  event.respondWith((async () => {
-    if (event.clientId) {
-      const client = await self.clients.get(event.clientId);
-      if (client && client.url.includes('ink.html')) return fetch(req);
-    }
-    return strategy();
-  })());
+  event.respondWith(strategy());
 });
+
 
 // FIFO eviction. caches.keys() returns request entries in insertion order,
 // so the oldest are at the front. We delete `(length - max)` from the head.

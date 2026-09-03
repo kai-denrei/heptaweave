@@ -1,4 +1,4 @@
-// scripts/ink-cdp-shots.mjs — real-time screenshots of ink.html via CDP.
+// scripts/ink-cdp-shots.mjs — real-time screenshots of the ink theme via CDP.
 //
 // Headless Chrome's --virtual-time-budget starves requestAnimationFrame, so
 // anything animated must be captured against the wall clock. This launches
@@ -67,7 +67,7 @@ async function shot(name) {
 
 await send('Page.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: 420, height: 920, deviceScaleFactor: 1, mobile: true });
-await send('Page.navigate', { url: `http://localhost:8765/ink.html${hash ? '#' + hash : ''}` });
+await send('Page.navigate', { url: `http://localhost:8765/index.html${hash ? '#' + hash : ''}` });
 await sleep(1200);
 await shot('00-landing.png');
 await evaluate(`document.querySelector('.mode-btn[data-mode="${mode}"]').click(); 'ok'`);

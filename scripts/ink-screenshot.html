@@ -3,7 +3,7 @@
 <style>html,body{margin:0;padding:0;background:#000}</style>
 </head><body>
 <!--
-  Headless harness for ink.html. Query params:
+  Headless harness for the ink theme (index.html). Query params:
     mode=TIMED|ENDLESS   click this mode button after boot (default ENDLESS)
     p=<base64url diff>   params to pass through in the hash (e.g. pinTier)
     pick=<n>             after `pickAt` ms, click choice tile n (0-based)
@@ -17,9 +17,9 @@
 const q = new URLSearchParams(location.search);
 const hashParts = [];
 if (q.get('p')) hashParts.push('p=' + q.get('p'));
-if (q.get('test')) hashParts.push('test');
+if (q.get('test') || q.get('admin')) hashParts.push('admin');
 const f = document.getElementById('frame');
-f.src = '../ink.html' + (hashParts.length ? '#' + hashParts.join('&') : '');
+f.src = '../index.html' + (hashParts.length ? '#' + hashParts.join('&') : '');
 setInterval(() => {
   const h = f.contentWindow && f.contentWindow.heptaweave;
   if (!h) return;

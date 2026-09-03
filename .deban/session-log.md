@@ -27,7 +27,15 @@ Touched: [[arch]], [[design]], [[dev]], `docs/devlog.md`, spec + plan under `doc
 - **Lesson (dev):** headless `--virtual-time-budget` starves rAF (3 frames in
   8.5 s of budget) — never judge animation from it; drive CDP with real waits.
 
-Hosted: `python3 scripts/dev-server.py 8765` → http://192.168.0.198:8765/ink.html
+**Promoted to default the same session** (operator call): `ink.html` →
+`index.html`, paper → `paper.html`; ink page inherits the PWA head + opt-in
+SW update toast; SW v4 drops the ink cache bypass and precaches both pages;
+manifest theme/background → `#08090d`. Test panel → **admin panel**
+(`src/test/adminPanel.js`): `#admin` entry, a tab per parameter group, pinned
+preset row, and the play stage lifts while the sheet is open. Paper verified
+unchanged at `paper.html` via the existing headless harness.
+
+Hosted: `python3 scripts/dev-server.py 8765` → http://192.168.0.198:8765/
 
 ## 2026-05-21 — PWA hardening pass (mobile-pwa skill review)
 

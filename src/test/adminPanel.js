@@ -1,14 +1,20 @@
-// testPanel.js — the ink theme's test mode: every param as a live slider,
-// plus presets (local slots, shipped list, share link).
+// adminPanel.js — the ink theme's admin surface: every parameter as a live
+// slider, plus presets (local slots, shipped list, share link).
 //
-// A dev surface: text labels are allowed here. Reached only by a deliberate
-// gesture (1 s corner hold on landing) or `#test` in the URL, so the play
-// surface's no-text rule is untouched.
+// Reached by `#admin` in the URL or a 1 s hold on the landing screen's
+// bottom-right corner. A dev surface, so text labels are allowed here — the
+// no-Latin rule protects the play surface, and a deliberate gesture / URL is
+// the boundary.
+//
+// Layout: a preset row that is always visible (tweak → save → copy link
+// without switching context), a tab per parameter group, and one group's
+// sliders at a time so the sheet stays thumb-sized on a phone.
 
 import { SCHEMA, DEFAULTS, decodeDiff } from '../params.js';
 import { SHIPPED_PRESETS } from './presets.js';
 
 const LS_PRESETS = 'heptaweave.ink.presets';
+const LS_TAB = 'heptaweave.ink.adminTab';
 
 function loadLocal() {
   try { return JSON.parse(localStorage.getItem(LS_PRESETS) || '{}') || {}; }
@@ -17,17 +23,29 @@ function loadLocal() {
 function saveLocal(obj) {
   try { localStorage.setItem(LS_PRESETS, JSON.stringify(obj)); } catch {}
 }
+function loadTab() {
+  try { return localStorage.getItem(LS_TAB) || ''; } catch { return ''; }
+}
+function saveTab(name) {
+  try { localStorage.setItem(LS_TAB, name); } catch {}
+}
 function fmt(v, step) {
   const decimals = (String(step).split('.')[1] || '').length;
   return decimals > 0 ? Number(v).toFixed(decimals) : String(v | 0);
 }
 
-export function createTestPanel({ params, root }) {
+export function createAdminPanel({ params, root }) {
+  const GROUPS = [...new Set(SCHEMA.map(r => r[0]))];
+
   const sheet = document.createElement('section');
-  sheet.className = 'test-sheet';
+  sheet.className = 'admin-sheet';
   sheet.hidden = true;
   sheet.innerHTML = `
-    <div class="ts-handle" data-act="collapse"><span class="ts-grip"></span><span class="ts-title">test mode</span><span class="ts-close" data-act="close">✕</span></div>
+    <div class="ts-handle" data-act="collapse">
+      <span class="ts-grip"></span>
+      <span class="ts-title">admin</span>
+      <span class="ts-close" data-act="close">✕</span>
+    </div>
     <div class="ts-body">
       <div class="ts-presets">
         <div class="ts-row">
@@ -39,28 +57,39 @@ export function createTestPanel({ params, root }) {
         <div class="ts-list"></div>
         <div class="ts-status"></div>
       </div>
+      <div class="ts-tabs"></div>
       <div class="ts-controls"></div>
       <pre class="ts-dump"></pre>
     </div>`;
   root.appendChild(sheet);
 
+  const tabsEl = sheet.querySelector('.ts-tabs');
   const controls = sheet.querySelector('.ts-controls');
   const list = sheet.querySelector('.ts-list');
   const status = sheet.querySelector('.ts-status');
   const dump = sheet.querySelector('.ts-dump');
   const nameInput = sheet.querySelector('.ts-name');
   const inputs = new Map();
+  const panes = new Map();
 
-  // ---- sliders, grouped -------------------------------------------------
-  let group = null;
+  // ---- tabs + sliders ---------------------------------------------------
+  let activeTab = GROUPS.includes(loadTab()) ? loadTab() : GROUPS[0];
+
+  for (const grp of GROUPS) {
+    const tab = document.createElement('button');
+    tab.className = 'ts-tab';
+    tab.type = 'button';
+    tab.textContent = grp;
+    tab.addEventListener('click', () => selectTab(grp));
+    tabsEl.appendChild(tab);
+
+    const pane = document.createElement('div');
+    pane.className = 'ts-pane';
+    controls.appendChild(pane);
+    panes.set(grp, { tab, pane });
+  }
+
   for (const [grp, key, label, min, max, step] of SCHEMA) {
-    if (grp !== group) {
-      group = grp;
-      const h = document.createElement('div');
-      h.className = 'ts-section';
-      h.textContent = grp;
-      controls.appendChild(h);
-    }
     const wrap = document.createElement('label');
     wrap.className = 'ts-slider';
     const lab = document.createElement('span');
@@ -79,9 +108,20 @@ export function createTestPanel({ params, root }) {
       refreshDump();
     });
     wrap.append(lab, val, input);
-    controls.appendChild(wrap);
+    panes.get(grp).pane.appendChild(wrap);
     inputs.set(key, { input, val, step });
   }
+
+  function selectTab(grp) {
+    activeTab = grp;
+    saveTab(grp);
+    for (const [name, { tab, pane }] of panes) {
+      const on = (name === grp);
+      tab.classList.toggle('active', on);
+      pane.hidden = !on;
+    }
+  }
+  selectTab(activeTab);
 
   function syncInputs() {
     for (const [key, { input, val, step }] of inputs) {
@@ -140,7 +180,9 @@ export function createTestPanel({ params, root }) {
   async function copyLink() {
     const hash = params.shareHash();
     const url = new URL(location.href);
-    url.hash = hash ? `#${hash}` : '';
+    // Keep the admin flag in the shared link so the recipient lands in the
+    // same surface they were sent from.
+    url.hash = hash ? `#admin&${hash}` : '#admin';
     history.replaceState(null, '', url.toString());
     try {
       await navigator.clipboard.writeText(url.toString());
@@ -174,16 +216,27 @@ export function createTestPanel({ params, root }) {
   renderList();
   refreshDump();
 
+  // Opening the sheet lifts the play stage (see `body.admin-open` in the
+  // page CSS). A resize event makes the renderer re-measure and re-lay the
+  // glyph that is currently in the water; choice tiles settle next round.
+  function setOpen(open) {
+    document.body.classList.toggle('admin-open', open);
+    window.dispatchEvent(new Event('resize'));
+  }
+
   const api = {
     el: sheet,
-    show() { sheet.hidden = false; syncInputs(); refreshDump(); },
-    hide() { sheet.hidden = true; },
+    show() { sheet.hidden = false; syncInputs(); refreshDump(); setOpen(true); },
+    hide() { sheet.hidden = true; setOpen(false); },
     toggle() { sheet.hidden ? api.show() : api.hide(); },
     get visible() { return !sheet.hidden; },
+    selectTab,
     /** Load a diff from a raw base64url string (e.g. pasted). */
     loadEncoded(str) { params.load(decodeDiff(str)); refreshDump(); },
   };
   return api;
 }
 
-export { DEFAULTS };
+// Legacy name — the panel was `createTestPanel` while the theme lived at
+// ink.html#test. Kept so older harnesses and links keep working.
+export { createAdminPanel as createTestPanel, DEFAULTS };

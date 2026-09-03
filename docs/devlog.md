@@ -51,6 +51,19 @@ the phone is the real acceptance test. Things to try next, in the sheet:
 `flowScale` 3–4 for tighter eddies, `strokeRadius`/`strokeAmount` for a
 thinner brush, `holdMs` longer at low tiers, palettes 1–4.
 
+### Promotion to default (2026-09-03, same session)
+
+`ink.html` → `index.html`, paper → `paper.html`. The ink page picked up the
+PWA head (manifest, apple-touch-icon, cb token, opt-in update toast) and the
+SW's ink-bypass was dropped — the ink page is the app now, so it must cache
+for offline. Manifest theme/background → `#08090d`.
+
+Known gap: toggling the admin sheet mid-round lifts the stage, and the fluid
+re-lays the current glyph on the synthetic `resize`, but the choice tiles are
+only repositioned on the next round. Same gap exists for a real window
+resize. Fix when it bites: keep the last `renderChoices` args on the renderer
+and replay them from the resize handler.
+
 ### Licensing
 
 Upstream `ink-flow` demo has no license; heptaweave is public. The fluid
