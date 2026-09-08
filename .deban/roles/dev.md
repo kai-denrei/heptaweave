@@ -42,6 +42,7 @@ Implementation details, file-level conventions, build/test commands, dev-server.
 <!-- APPEND ONLY. Never delete. -->
 | Date | What was tried | Why it failed / was rejected |
 |---|---|---|
+| 2026-09-09 | Pushed two module changes (one-trait, count mode) without running `scripts/bust.sh` or bumping `CACHE_VERSION`. | Operator's phone got the new `index.html` (network-first) with the OLD modules (stale-while-revalidate keyed by `?v=`), so `showScreen('count')` hid every screen and `renderCount` did not exist: a blank page. Every module change ships with a bust + SW version bump. |
 | 2026-09-09 | Count numeral via `painter.splashSvg()` with the budget raised to 6000 splats and 800 samples per path. | Each splat is a full-quad GL pass over the dye; ~6000 per second took headless Chrome to ~6 fps and saturated the dye into a blob. Long filled shapes need a raster stamp, not path splats. |
 | 2026-09-09 | Wobble as a perpendicular sinusoid with wavelength ≈ 9 brush radii at amplitude 0.6 R. | Read as a scribble on the CDP frames — the whole figure zig-zagged. Wavelength ≈ 20 R and amplitude 0.25 R reads as a hand tremor. Lesson: continuity exposes wobble that per-segment jitter used to hide at the joints. |
 | 2026-05-20 | Copied `morseDigitArc.js` verbatim from heptacipher; imports `./brush.js` / `./splotch.js` relative. | In heptaweave the ink primitives live under `src/ink/`, not flat `src/`. Browser silently ate the error (`Failed to fetch dynamically imported module` with no underlying cause). Fixed by rewriting imports to `../ink/brush.js` / `../ink/splotch.js`. Lesson: when porting a file from a flat-src project to a nested-src project, audit relative imports first. |
@@ -50,6 +51,7 @@ Implementation details, file-level conventions, build/test commands, dev-server.
 | 2026-05-20 | Even-angle orbital layout (tiles evenly distributed on an ellipse around the Cistercian). | User mockup shows an organic quincunx (4 corners + bottom-center for 5 choices), not even spacing. Replaced with per-count slot presets matching the mockup's uneven layout. |
 
 ## Lessons
+- **A deploy is `bust.sh` + `CACHE_VERSION` bump + push, never push alone.** `index.html` is network-first but its modules are cached by `?v=` URL; a new page over old modules is the worst of both. — from dead end on 2026-09-09
 - **Headless Chrome's `--virtual-time-budget` starves requestAnimationFrame.** — from the ink theme, 2026-09-03. 8.5 s of budget delivered 3 rAF frames; every "later" screenshot was really the first frame. For anything animated, launch Chrome with `--remote-debugging-port`, drive it over CDP, and wait on the wall clock (`scripts/ink-cdp-shots.mjs`). Also: put `--screenshot=` before `--virtual-time-budget=` or `--window-size` is ignored.
 - Verbatim ports across differing folder layouts need an import-rewrite pass.
 - Chrome's dynamic-import error message is unhelpful; cascade-import each file in isolation to find the broken one.
@@ -84,6 +86,7 @@ Blocked by:
 Feeds into:
 
 ## Session Log
+- 2026-09-09 (blank page fix) — Cause was stale modules, not the renderer: bust token 2d689cf5 → 7f4361f5, SW cache v4 → v5. Count numeral now sized from its raster's alpha bounds (80% of the short side) with a path-splat fallback if the raster fails.
 - 2026-09-09 (+ count mode) — COUNT mode/phase, stamp pass, rasterizeSvg, count params. CDP: value cadence, drain window, short press vs 1 s hold.
 - 2026-09-09 (one trait / bands / diffusion) — growthFront.js + sampler painter, bandLayout.js, FRAG_DIFFUSE, admin copy/paste. Smoke test extended (growth front, band layout), CDP frames at tier 0 and pinned tier 3 inspected. One dead end (scribble wobble). Paper theme untouched.
 - 2026-09-03 (to-do intents resolved) — Growth-front spec replaces the regrouping plan for to-do 1: the deliverable is a connected-figure-with-distance-from-root builder rooted at the stave midpoint, consumed as a reveal front by the ink painter and as one continuous brush path by paper. Verified against `digitMap.js` that 9 of 10 digit shapes attach to the stave and digit 6 does not — flagged to [[pm]] as a blocking call.

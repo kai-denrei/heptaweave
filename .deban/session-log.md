@@ -151,3 +151,4 @@ deban-sync commit landing now.
 
 2026-09-09 00:30 — SYNC — one-trait Cistercian (growth front, digit 6 seeded), band layout, diffusion, admin copy/paste. Roles: pm, dev, design. New open question in pm (diffusion vs dissolve clock).
 2026-09-09 01:20 — SYNC — + count mode (stopwatch logogram in ink, stamp pass, hold to leave). Roles: pm, dev, design, arch. Dead end: path-splatting the numeral.
+2026-09-09 01:50 — SYNC — blank count page = stale modules; bust + SW v5; numeral sized to 80% from alpha bounds. Lesson recorded in dev.

@@ -64,7 +64,7 @@ export const SCHEMA = [
   ['stage', 'timedDimming',   '⧖ dim by run end',     0,     1,    0.05,  0.7],
 
   // ---- count: the + mode's one big logogram -----------------------------
-  ['count', 'countSize',      'numeral size',         0.3,   1.6,  0.01,  1.15],
+  ['count', 'countSize',      'numeral extent (of short side)', 0.3, 1, 0.01, 0.8],
   ['count', 'countInk',       'numeral ink',          0.05,  1,    0.01,  0.5],
   ['count', 'countDrift',     'drift ×',              0,     1,    0.05,  0.1],
   ['count', 'countFade',      'fade / step',          0.95,  1,    0.001, 0.996],

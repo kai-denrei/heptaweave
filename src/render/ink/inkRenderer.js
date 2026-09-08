@@ -459,7 +459,11 @@ export function createInkRenderer({ params }) {
     renderCount({ value, seed, periodMs = 1000 }) {
       if (!els.countStage || !fluid.ok) return;
       const stage = els.countStage.getBoundingClientRect();
-      const size = Math.round(Math.min(stage.width, stage.height) * params.get('countSize'));
+      const short = Math.min(stage.width, stage.height);
+      // The SVG's own size is only a raster resolution; the ink is scaled
+      // afterwards from its measured bounds, so `countSize` is the fraction
+      // of the short side the numeral actually covers.
+      const size = Math.round(short);
       const svg = renderHeptapodNumeralV2({
         number: Math.max(0, value | 0) % 10000,
         size,
@@ -471,13 +475,32 @@ export function createInkRenderer({ params }) {
       const token = ++countToken;
       count = { at: performance.now(), periodMs };
       drainUntil = 0;
+      const rgb = coreRgb().map(c => c * 3);
+      const amount = params.get('countInk');
       rasterizeSvg(svg, 2).then((bmp) => {
         if (token !== countToken || screen !== 'count') return;
-        const w = bmp.width / 2, h = bmp.height / 2;
-        const x = stage.left + (stage.width - w) / 2;
-        const y = stage.top + (stage.height - h) / 2;
-        fluid.stamp(bmp, fluid.rectFromClient(x, y, w, h), coreRgb().map(c => c * 3), params.get('countInk'));
-      }).catch(() => {});
+        const bb = alphaBounds(bmp);
+        if (!bb) throw new Error('empty raster');
+        // Scale the ink's bounding box to `countSize` of the short side and
+        // centre that box on the stage.
+        const target = short * params.get('countSize');
+        const k = target / Math.max(bb.w, bb.h);
+        const w = bmp.width * k, h = bmp.height * k;
+        const cx = stage.left + stage.width / 2, cy = stage.top + stage.height / 2;
+        const x = cx - (bb.x + bb.w / 2) * k;
+        const y = cy - (bb.y + bb.h / 2) * k;
+        fluid.stamp(bmp, fluid.rectFromClient(x, y, w, h), rgb, amount);
+      }).catch((err) => {
+        // Raster path unavailable (blob SVG images are the usual suspect on
+        // older WebKit): fall back to splatting the SVG's paths so the
+        // screen is never blank. Needs the SVG laid out for getScreenCTM.
+        if (token !== countToken || screen !== 'count') return;
+        console.warn('count: raster failed, splatting paths', err);
+        const target = short * params.get('countSize');
+        svg.setAttribute('width', String(target)); svg.setAttribute('height', String(target));
+        els.countStage.replaceChildren(svg);
+        painter.splashSvg(svg, coreRgb(), { amount: amount * 0.6, radiusPx: target * 0.012, spacingPx: 6 });
+      });
     },
 
     showGameOver({ score, clean }) {
@@ -520,6 +543,24 @@ function rasterizeSvg(svg, scale = 1) {
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('svg raster failed')); };
     img.src = url;
   });
+}
+
+// Bounding box of the non-transparent pixels of a canvas, in canvas px.
+function alphaBounds(c) {
+  const ctx = c.getContext('2d');
+  const { width: W, height: H } = c;
+  const a = ctx.getImageData(0, 0, W, H).data;
+  let x0 = W, y0 = H, x1 = -1, y1 = -1;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (a[(y * W + x) * 4 + 3] > 8) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+  }
+  if (x1 < 0) return null;
+  return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
 
 function wireHold(el, fn) {

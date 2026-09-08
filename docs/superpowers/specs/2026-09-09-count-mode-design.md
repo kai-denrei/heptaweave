@@ -38,7 +38,7 @@ stable." Answered in-session: one per second (stopwatch), 1 s hold to leave.
 
 ## Params (group `count`)
 
-`countSize` (of the short side, 1.15), `countInk` (0.5), `countDrift`,
+`countSize` (ink bounding box as a fraction of the short side, measured from the raster's alpha; 0.8), `countInk` (0.5), `countDrift`,
 `countFade`, `countDrainMs`, `countDrainFade`. All live in `#admin`.
 
 ## Verification
