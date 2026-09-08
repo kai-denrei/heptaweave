@@ -31,15 +31,23 @@ stable." Answered in-session: one per second (stopwatch), 1 s hold to leave.
   Splatting its paths was tried first and dropped the app to ~6 fps — see
   the dead end in `.deban/roles/dev.md`.
 - Stability: on the count screen dissipation is `countFade` (0.996), current
-  is `flowStrength × countDrift` (0.1), diffusion is off, no wisps. In the
-  last `countDrainMs` (300) before the next value the fluid drains at
-  `countDrainFade` (0.86) so digits never pile up.
+  is `flowStrength × countDrift` (0.1), diffusion is off, no wisps.
+- **Layers, not a whole redraw** (operator, 2026-09-09: "only the digits
+  that change, otherwise it is blinking too much"). The numeral is cut into
+  a ring layer and one layer per digit place (`numeralV2` wraps each lobe in
+  `<g class="lobe" data-place>`; `lobeRng: true` gives each lobe its own
+  rng stream so a digit's marks depend only on place and value; fixed seed).
+  Layers cache by key. On a tick: changed digits are erased (`FRAG_STAMP`
+  erase mode, mask dilated by `countErase` px with the ring punched out) and
+  re-stamped at `countInk`; the ring and unchanged digits get a top-up of
+  `countInk × (1 − countFade^60)`, exactly what the fade removed, so they
+  neither blink nor decay.
 - Hold: `wireHold` (1 s pointerdown) on the count screen. A tap does nothing.
 
 ## Params (group `count`)
 
-`countSize` (ink bounding box as a fraction of the short side, measured from the raster's alpha; 0.8), `countInk` (0.5), `countDrift`,
-`countFade`, `countDrainMs`, `countDrainFade`. All live in `#admin`.
+`countSize` (ink bounding box as a fraction of the short side, measured from the raster's alpha; 0.8), `countInk` (0.22), `countDrift`,
+`countFade`, `countErase`. All live in `#admin`.
 
 ## Verification
 

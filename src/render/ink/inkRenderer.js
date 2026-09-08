@@ -7,9 +7,10 @@
 //      stage light dims across the run; a wrong answer is a drain pulse.
 //   ∞  dissipation is derived from the tier's revealMs; "stays" tiers drift
 //      without fading and are re-inked periodically.
-//   +  no clock: one large logogram is splatted whole each time the count
-//      changes, held nearly still, and drained in the last `countDrainMs`
-//      before the next value lands.
+//   +  no clock: one large logogram stamped in layers (ring + one per
+//      digit). When the value changes only the digits that changed are
+//      erased and re-stamped; the rest is topped up by exactly the ink the
+//      fade took, so nothing blinks.
 // Choices are overlaid SVG logograms in the palette's core colour; the
 // tapped one is splatted into the fluid as the reaction (correct = core
 // colour bloom, wrong = ember splash + drain).
@@ -61,8 +62,11 @@ export function createInkRenderer({ params }) {
   let screen = 'landing';
   let run = { mode: null, timeRemainingMs: 0, totalMs: 0 };
   let wispAcc = 0;
-  let count = { at: 0, periodMs: 1000 };   // + mode: when the value last changed
   let countToken = 0;
+  // + mode layer cache: key → Promise<canvas>; geometry shared by all layers.
+  let countLayers = new Map();
+  let countGeom = null;      // { rect, size }
+  let countShown = null;     // digits currently on the water, or null
   const debug = { frames: 0, steps: 0, firstNow: 0, lastNow: 0, get phase() { return phase; }, get dissip() { return glyph ? glyph.dissip : null; } };
 
   // --------------------------------------------------------------------------
@@ -179,12 +183,6 @@ export function createInkRenderer({ params }) {
     }
 
     if (screen !== 'play' && screen !== 'count') wisps(dt);
-    if (screen === 'count') {
-      const drainMs = params.get('countDrainMs');
-      if (drainMs > 0 && now - count.at >= count.periodMs - drainMs) {
-        drainUntil = now + 1; drainDissip = params.get('countDrainFade');
-      }
-    }
 
     acc += dt;
     let steps = 0;
@@ -435,6 +433,7 @@ export function createInkRenderer({ params }) {
 
     startRun({ mode, totalMs }) {
       run = { mode, timeRemainingMs: totalMs, totalMs };
+      countShown = null; countGeom = null;
       lastBitCount = 0;
       els.choices.replaceChildren();
       painter.cancel();
@@ -456,50 +455,85 @@ export function createInkRenderer({ params }) {
     // The + mode. The logogram is rasterised to a canvas and stamped into
     // the dye in one pass (its paths are far too long to splat). The raster
     // is async (SVG → Image); a later value cancels an earlier one in flight.
-    renderCount({ value, seed, periodMs = 1000 }) {
+    renderCount({ value, periodMs = 1000 }) {
       if (!els.countStage || !fluid.ok) return;
+      const n = Math.max(0, value | 0) % 10000;
+      const digits = [Math.floor(n / 1000) % 10, Math.floor(n / 100) % 10, Math.floor(n / 10) % 10, n % 10];
       const stage = els.countStage.getBoundingClientRect();
       const short = Math.min(stage.width, stage.height);
-      // The SVG's own size is only a raster resolution; the ink is scaled
-      // afterwards from its measured bounds, so `countSize` is the fraction
-      // of the short side the numeral actually covers.
       const size = Math.round(short);
-      const svg = renderHeptapodNumeralV2({
-        number: Math.max(0, value | 0) % 10000,
-        size,
-        seed: 0xc0ffee ^ (seed * 2654435761),
-        ...HEPTAWEAVE_CHOICE_TUNE, ...loadTune(),
-        haloOpacity: 0,
-      });
-      svg.setAttribute('color', '#fff');
       const token = ++countToken;
-      count = { at: performance.now(), periodMs };
-      drainUntil = 0;
       const rgb = coreRgb().map(c => c * 3);
-      const amount = params.get('countInk');
-      rasterizeSvg(svg, 2).then((bmp) => {
+      const ink = params.get('countInk');
+      // What the fade removes over one period, so a top-up restores exactly that.
+      const steps = Math.max(1, Math.round(periodMs / 1000 * 60));
+      const topUp = ink * (1 - Math.pow(params.get('countFade'), steps));
+
+      // One SVG per distinct digit set; layers are cut from it by hiding
+      // the other groups. A fixed seed + per-lobe rng streams make a digit's
+      // marks depend only on its place and value, so layers cache by key.
+      const svgFor = (num) => {
+        const svg = renderHeptapodNumeralV2({
+          number: num, size, seed: 0xc0ffee,
+          ...HEPTAWEAVE_CHOICE_TUNE, ...loadTune(),
+          haloOpacity: 0, lobeRng: true,
+        });
+        svg.setAttribute('color', '#fff');
+        return svg;
+      };
+      const layer = (key, hide) => {
+        if (!countLayers.has(key)) {
+          const svg = svgFor(n);
+          for (const el of svg.querySelectorAll(hide)) el.setAttribute('display', 'none');
+          countLayers.set(key, rasterizeSvg(svg, 2));
+        }
+        return countLayers.get(key);
+      };
+      const ringP = layer(`ring:${size}`, '.lobe');
+      const digitP = digits.map((d, i) => layer(`d:${size}:${i}:${d}`, `.enso, .wet-drop, .lobe:not([data-place="${i}"])`));
+      const prev = countShown;
+      const prevP = prev ? prev.map((d, i) => (d === digits[i]) ? null : layer(`d:${size}:${i}:${d}`, `.enso, .wet-drop, .lobe:not([data-place="${i}"])`)) : [];
+
+      Promise.all([ringP, ...digitP, ...prevP]).then(([ring, ...rest]) => {
         if (token !== countToken || screen !== 'count') return;
-        const bb = alphaBounds(bmp);
-        if (!bb) throw new Error('empty raster');
-        // Scale the ink's bounding box to `countSize` of the short side and
-        // centre that box on the stage.
-        const target = short * params.get('countSize');
-        const k = target / Math.max(bb.w, bb.h);
-        const w = bmp.width * k, h = bmp.height * k;
-        const cx = stage.left + stage.width / 2, cy = stage.top + stage.height / 2;
-        const x = cx - (bb.x + bb.w / 2) * k;
-        const y = cy - (bb.y + bb.h / 2) * k;
-        fluid.stamp(bmp, fluid.rectFromClient(x, y, w, h), rgb, amount);
+        const news = rest.slice(0, 4), olds = rest.slice(4);
+        // Geometry from the ring: the ink box scales to `countSize` of the
+        // short side; every layer shares the raster size so one rect fits all.
+        if (!countGeom || countGeom.size !== size) {
+          const bb = alphaBounds(ring);
+          if (!bb) throw new Error('empty raster');
+          const k = (short * params.get('countSize')) / Math.max(bb.w, bb.h);
+          const w = ring.width * k, h = ring.height * k;
+          const cx = stage.left + stage.width / 2, cy = stage.top + stage.height / 2;
+          countGeom = { size, rect: fluid.rectFromClient(cx - (bb.x + bb.w / 2) * k, cy - (bb.y + bb.h / 2) * k, w, h) };
+        }
+        const { rect } = countGeom;
+        const reach = params.get('countErase') * 2; // raster is 2×
+        if (!prev) {
+          fluid.stamp(ring, rect, rgb, ink);
+          for (const c of news) fluid.stamp(c, rect, rgb, ink);
+        } else {
+          fluid.stamp(ring, rect, rgb, topUp);
+          digits.forEach((d, i) => {
+            if (d === prev[i]) { fluid.stamp(news[i], rect, rgb, topUp); return; }
+            fluid.stamp(dilate(olds[i], reach, ring), rect, rgb, 1, { erase: true });
+            fluid.stamp(news[i], rect, rgb, ink);
+          });
+        }
+        countShown = digits;
       }).catch((err) => {
         // Raster path unavailable (blob SVG images are the usual suspect on
-        // older WebKit): fall back to splatting the SVG's paths so the
-        // screen is never blank. Needs the SVG laid out for getScreenCTM.
+        // older WebKit): splat the whole numeral's paths so the screen is
+        // never blank. Needs the SVG laid out for getScreenCTM.
         if (token !== countToken || screen !== 'count') return;
         console.warn('count: raster failed, splatting paths', err);
         const target = short * params.get('countSize');
+        const svg = svgFor(n);
         svg.setAttribute('width', String(target)); svg.setAttribute('height', String(target));
         els.countStage.replaceChildren(svg);
-        painter.splashSvg(svg, coreRgb(), { amount: amount * 0.6, radiusPx: target * 0.012, spacingPx: 6 });
+        startDrain(200, 0.8);
+        painter.splashSvg(svg, coreRgb(), { amount: ink * 0.6, radiusPx: target * 0.012, spacingPx: 6 });
+        countShown = null;
       });
     },
 
@@ -543,6 +577,32 @@ function rasterizeSvg(svg, scale = 1) {
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('svg raster failed')); };
     img.src = url;
   });
+}
+
+// A copy of `c` with its alpha grown by `r` px in eight directions, so an
+// erase covers ink that drifted a little since it was stamped; `keep` (the
+// ring layer) is punched out so the erase never notches the ring.
+function dilate(c, r, keep = null) {
+  const out = document.createElement('canvas');
+  out.width = c.width; out.height = c.height;
+  const ctx = out.getContext('2d');
+  ctx.drawImage(c, 0, 0);
+  if (r > 0) {
+    for (let a = 0; a < 8; a++) {
+      const t = (a / 8) * Math.PI * 2;
+      ctx.drawImage(c, Math.cos(t) * r, Math.sin(t) * r);
+    }
+    for (let a = 0; a < 8; a++) {
+      const t = ((a + 0.5) / 8) * Math.PI * 2;
+      ctx.drawImage(c, Math.cos(t) * r * 0.5, Math.sin(t) * r * 0.5);
+    }
+  }
+  if (keep) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.drawImage(keep, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  return out;
 }
 
 // Bounding box of the non-transparent pixels of a canvas, in canvas px.

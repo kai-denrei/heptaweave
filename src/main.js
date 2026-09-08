@@ -286,7 +286,7 @@ export function boot({ renderer, params = null, onCornerHold = null }) {
     store.set({ phase: PHASE.COUNT, count: 0 });
     renderer.startRun({ mode, totalMs: 0 });
     renderer.showScreen('count');
-    renderer.renderCount({ value: 0, seed: 1, periodMs: cfg.periodMs });
+    renderer.renderCount({ value: 0, periodMs: cfg.periodMs });
     lastTick = countStart;
     if (rafId) cancelAnimationFrame(rafId);
     loop();
@@ -297,7 +297,7 @@ export function boot({ renderer, params = null, onCornerHold = null }) {
     const value = Math.floor((now - countStart) / cfg.periodMs) % cfg.wrapAt;
     if (value !== s.count) {
       store.set({ count: value });
-      renderer.renderCount({ value, seed: value + 1, periodMs: cfg.periodMs });
+      renderer.renderCount({ value, periodMs: cfg.periodMs });
     }
   }
 

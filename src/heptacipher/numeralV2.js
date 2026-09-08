@@ -109,6 +109,11 @@ export function renderHeptapodNumeralV2({
   dashMinWidth = 0.6,
   wetDropSizeFrac = WET_DROP_SIZE_FRAC,
   disableJitter = false,
+  // Give each lobe its own rng stream derived from `seed` and its place, so a
+  // digit's marks depend only on (seed, place, digit) and unchanged digits
+  // render identically when a neighbour changes. Off by default: the
+  // canonical look consumes one stream in order.
+  lobeRng = false,
 } = {}) {
   if (!Number.isInteger(number) || number < 0 || number > 9999) {
     throw new TypeError(`numeralV2: number must be 0..9999, got ${number}`);
@@ -169,7 +174,7 @@ export function renderHeptapodNumeralV2({
       ensoCenter: { x: cx, y: cy },
       ensoRadius: radius,
       scale: appendageScale,
-      rng,
+      rng: lobeRng ? createRng((seed ^ ((i + 1) * 0x9e3779b1)) >>> 0) : rng,
       bulge,
       inward,
       markSpread,
@@ -177,7 +182,7 @@ export function renderHeptapodNumeralV2({
       dashWidthFactor,
       dashMinWidth,
     });
-    appendageBodies.push(result.body);
+    appendageBodies.push(`<g class="lobe" data-place="${i}">${result.body}</g>`);
   }
 
   // WET-DROP -------------------------------------------------------------

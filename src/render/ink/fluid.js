@@ -269,7 +269,7 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
    * dye in one pass. `rect` is { u, v, w, h } in uv with v bottom-up — see
    * `rectFromClient`.
    */
-  function stamp(source, rect, rgb, amount) {
+  function stamp(source, rect, rgb, amount, { erase = false } = {}) {
     gl.bindTexture(gl.TEXTURE_2D, maskTex);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
@@ -285,6 +285,7 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     gl.uniform4f(progStamp.u.u_rect, rect.u, rect.v, rect.w, rect.h);
     gl.uniform3f(progStamp.u.u_color, rgb[0], rgb[1], rgb[2]);
     gl.uniform1f(progStamp.u.u_amount, amount);
+    gl.uniform1f(progStamp.u.u_erase, erase ? 1 : 0);
     drawQuad();
     dye.swap();
   }

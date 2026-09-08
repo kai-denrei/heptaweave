@@ -65,11 +65,10 @@ export const SCHEMA = [
 
   // ---- count: the + mode's one big logogram -----------------------------
   ['count', 'countSize',      'numeral extent (of short side)', 0.3, 1, 0.01, 0.8],
-  ['count', 'countInk',       'numeral ink',          0.05,  1,    0.01,  0.5],
+  ['count', 'countInk',       'numeral ink',          0.05,  1,    0.01,  0.22],
   ['count', 'countDrift',     'drift ×',              0,     1,    0.05,  0.1],
   ['count', 'countFade',      'fade / step',          0.95,  1,    0.001, 0.996],
-  ['count', 'countDrainMs',   'drain before next (ms)', 0,   900,  10,    300],
-  ['count', 'countDrainFade', 'drain fade / step',    0.7,   0.99, 0.005, 0.86],
+  ['count', 'countErase',     'erase reach (px)',     0,     12,   0.5,   3],
 
   // ---- rules: test-mode overrides (−1 / 0 = use the table) --------------
   ['rules', 'pinTier',        'pin tier (−1 = off)',  -1,    9,    1,     -1],

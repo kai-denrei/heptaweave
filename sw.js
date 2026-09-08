@@ -11,7 +11,7 @@
 // an in-app toast, and ONLY when the user opts in we post `SKIP_WAITING` to the
 // new worker so it activates and the page reloads on `controllerchange`.
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const STATIC_CACHE  = `heptaweave-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `heptaweave-runtime-${CACHE_VERSION}`;
 
