@@ -59,7 +59,12 @@ export function createAdminPanel({ params, root }) {
       </div>
       <div class="ts-tabs"></div>
       <div class="ts-controls"></div>
-      <pre class="ts-dump"></pre>
+      <div class="ts-row ts-json-row">
+        <button class="ts-btn" data-act="copyDiff">copy JSON</button>
+        <button class="ts-btn" data-act="copyAll">copy all</button>
+        <button class="ts-btn" data-act="paste">load JSON ↓</button>
+      </div>
+      <textarea class="ts-dump" spellcheck="false" placeholder="{}  — changed values appear here; paste JSON and tap load"></textarea>
     </div>`;
   root.appendChild(sheet);
 
@@ -131,10 +136,33 @@ export function createAdminPanel({ params, root }) {
   }
   params.on((key) => { if (key === null) syncInputs(); });
 
+  // The dump is the copy-paste surface: the diff vs defaults as JSON, one key
+  // per line, ready to drop into presets.js or SCHEMA. It is a textarea so
+  // it can be selected by hand where the clipboard API is blocked, and so a
+  // pasted object can be loaded back with "load JSON".
   function refreshDump() {
     const diff = params.diff();
-    const n = Object.keys(diff).length;
-    dump.textContent = n ? JSON.stringify(diff, null, 1) : '{} (all defaults)';
+    dump.value = JSON.stringify(diff, null, 1);
+  }
+  async function copyText(text, what) {
+    try {
+      await navigator.clipboard.writeText(text);
+      say(`${what} copied`);
+    } catch {
+      dump.value = text;
+      dump.focus(); dump.select();
+      say(`clipboard blocked — ${what} selected below, copy by hand`);
+    }
+  }
+  function loadPasted() {
+    let obj;
+    try { obj = JSON.parse(dump.value || '{}'); }
+    catch { say('not valid JSON'); return; }
+    params.load(obj);
+    params.save();
+    syncInputs();
+    refreshDump();
+    say(`loaded ${Object.keys(params.diff()).length} value(s)`);
   }
 
   // ---- presets ------------------------------------------------------------
@@ -200,6 +228,9 @@ export function createAdminPanel({ params, root }) {
     if (act === 'collapse') { sheet.classList.toggle('collapsed'); return; }
     if (act === 'reset') { params.reset(); params.save(); refreshDump(); say('reset to defaults'); return; }
     if (act === 'link') { copyLink(); return; }
+    if (act === 'copyDiff') { copyText(JSON.stringify(params.diff(), null, 1), 'JSON'); return; }
+    if (act === 'copyAll') { copyText(JSON.stringify(params.all(), null, 1), 'all values'); return; }
+    if (act === 'paste') { loadPasted(); return; }
     if (act === 'save') {
       const name = (nameInput.value || '').trim() || `preset ${new Date().toISOString().slice(11, 16)}`;
       const cur = loadLocal();

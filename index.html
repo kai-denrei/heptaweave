@@ -268,7 +268,14 @@
     }
     .ts-slider input[type=range]::-moz-range-track { height: 3px; background: var(--faint); border-radius: 2px; }
     .ts-slider input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--ink); border: 2px solid var(--bg); }
-    .ts-dump { margin: 12px 0 0; padding: 8px; background: rgba(255,255,255,0.04); border-radius: 6px; font-size: 10px; white-space: pre-wrap; word-break: break-all; color: var(--dim); }
+    .ts-json-row { margin-top: 12px; }
+    .ts-dump {
+      display: block; width: 100%; box-sizing: border-box; min-height: 96px; margin: 6px 0 0; padding: 8px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--hair); border-radius: 6px;
+      font: 11px/1.4 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all;
+      color: var(--dim); resize: vertical; outline: none;
+    }
+    .ts-dump:focus { color: inherit; }
 
     @media (prefers-reduced-motion: reduce) {
       .choice-tile, .mode-btn { transition: none; }

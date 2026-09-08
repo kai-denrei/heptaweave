@@ -29,6 +29,7 @@ import { HEPTAWEAVE_CHOICE_TUNE, loadTune } from '../choiceTune.js';
 import { noopRenderer } from '../renderer.js';
 import { createFluid } from './fluid.js';
 import { createPainter } from './glyphPainter.js';
+import { layoutBands } from './bandLayout.js';
 import { PALETTES, paletteAt, sampleLut, coreCss, glowCss } from './palettes.js';
 import { dissipFor } from '../../params.js';
 
@@ -93,6 +94,7 @@ export function createInkRenderer({ params }) {
       current: params.get('current'),
       curlE: params.get('filament'),
       octaves: params.get('octaves'),
+      diffuseSpread: params.get('diffuseSpread'),
     };
   }
 
@@ -115,16 +117,21 @@ export function createInkRenderer({ params }) {
 
   function stepConfig(now) {
     const cfg = baseFlow();
+    const diffuse = params.get('diffuse');
     if (phase === 'paint' || phase === 'hold') {
-      cfg.dissip = 1; cfg.flowStr = 0;
+      cfg.dissip = 1; cfg.flowStr = 0; cfg.diffuse = 0;
     } else if (phase === 'ramp') {
       const t = easeInOut(Math.min(1, (now - phaseStart) / Math.max(1, params.get('rampMs'))));
       cfg.dissip = 1 + (targetDissip() - 1) * t;
       cfg.flowStr = targetFlowStr() * t;
+      cfg.diffuse = diffuse * t;
     } else if (phase === 'flow') {
       cfg.dissip = targetDissip(); cfg.flowStr = targetFlowStr();
+      // "stays" tiers keep their shape: no spreading, only drift.
+      cfg.diffuse = (glyph && glyph.stays) ? 0 : diffuse;
     } else {
       cfg.dissip = params.get('idleDissip'); cfg.flowStr = params.get('flowStrength') * 0.6;
+      cfg.diffuse = diffuse;
     }
     return cfg;
   }
@@ -258,9 +265,15 @@ export function createInkRenderer({ params }) {
     els.choices.replaceChildren();
     const mid = els.playMid.getBoundingClientRect();
     const box = promptBox();
-    const { tileSize, centers } = layoutChoices({
-      width: mid.width, height: mid.height, promptRadius: box.w / 2, count: numbers.length,
-    });
+    const { tileSize, centers } = (params.get('layoutMode') >= 1)
+      ? layoutBands({
+          width: mid.width, height: mid.height, promptSize: box.w, count: numbers.length,
+          gap: params.get('tileGap'), maxTile: params.get('tileMax'),
+        })
+      : layoutChoices({
+          width: mid.width, height: mid.height, promptRadius: box.w / 2, count: numbers.length,
+          maxTile: params.get('tileMax'),
+        });
     const tileR = tileSize / 2;
     const tune = loadTune();
     const effPad = (tune.vbPadFrac ?? HEPTAWEAVE_CHOICE_TUNE.vbPadFrac ?? 0.10);

@@ -11,7 +11,7 @@
 // No DOM beyond the canvas it is given. No rules. See ../../params.js for
 // the knobs that feed `step()` and `render()`.
 
-import { VERT, FRAG_ADVECT, FRAG_SPLAT, FRAG_PREFILTER, FRAG_BLUR, FRAG_DISPLAY } from './shaders.js';
+import { VERT, FRAG_ADVECT, FRAG_SPLAT, FRAG_DIFFUSE, FRAG_PREFILTER, FRAG_BLUR, FRAG_DISPLAY } from './shaders.js';
 import { PALETTES, buildLut, paletteAt } from './palettes.js';
 
 const GL_OPTS = {
@@ -130,6 +130,7 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
   // --------------------------------------------------------------------------
   const progAdvect = program(FRAG_ADVECT);
   const progSplat = program(FRAG_SPLAT);
+  const progDiffuse = program(FRAG_DIFFUSE);
   const progPre = program(FRAG_PREFILTER);
   const progBlur = program(FRAG_BLUR);
   const progDisplay = program(FRAG_DISPLAY);
@@ -230,10 +231,28 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     dye.swap();
   }
 
+  function diffuse(cfg) {
+    const amount = cfg.diffuse ?? 0;
+    if (!(amount > 0)) return;
+    gl.disable(gl.BLEND);
+    gl.useProgram(progDiffuse.p);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dye.write.fbo);
+    gl.viewport(0, 0, SW, SH);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, dye.read.tex);
+    gl.uniform1i(progDiffuse.u.u_dye, 0);
+    gl.uniform2f(progDiffuse.u.u_texel, 1 / SW, 1 / SH);
+    gl.uniform1f(progDiffuse.u.u_spread, cfg.diffuseSpread ?? 1.5);
+    gl.uniform1f(progDiffuse.u.u_amount, Math.min(1, amount));
+    drawQuad();
+    dye.swap();
+  }
+
   /** One fixed simulation step. `dt` in seconds. */
   function step(dt, cfg) {
     simTime += dt * 0.9;
     advect(dt, cfg);
+    diffuse(cfg);
   }
 
   /** Extra dissipation pass (wrong answer, run end, clear). */
@@ -347,7 +366,7 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
       freeTarget(pre); freeTarget(bloomA); freeTarget(bloomB);
       gl.deleteTexture(lutTex);
       gl.deleteBuffer(quad);
-      for (const p of [progAdvect, progSplat, progPre, progBlur, progDisplay]) gl.deleteProgram(p.p);
+      for (const p of [progAdvect, progSplat, progDiffuse, progPre, progBlur, progDisplay]) gl.deleteProgram(p.p);
     },
   };
 }

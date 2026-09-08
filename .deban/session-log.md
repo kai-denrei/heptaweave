@@ -148,3 +148,5 @@ deban-sync commit landing now.
 - Cache-busting toolkit copied from heptacipher; bust.sh fingerprints URLs and bumps favicon-shape cell.
 - One dead end recorded in [[dev]]: relative-import audit needed when porting files between flat- and nested-src layouts.
 - Smoke: 80+ DOM-level renders verified in headless Chrome at http://127.0.0.1:8766.
+
+2026-09-09 00:30 — SYNC — one-trait Cistercian (growth front, digit 6 seeded), band layout, diffusion, admin copy/paste. Roles: pm, dev, design. New open question in pm (diffusion vs dissolve clock).

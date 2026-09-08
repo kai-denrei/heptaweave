@@ -29,15 +29,21 @@ export const SCHEMA = [
   ['dissolve', 'timedScale',     '⧖ dissolve × remaining', 0.1, 1,    0.05,  1],
   ['dissolve', 'flowRefSeconds', 'full current at (s)',  0.5,   20,   0.5,   4],
   ['dissolve', 'flowMin',        'slowest current ×',    0,     1,    0.05,  0.15],
+  ['dissolve', 'diffuse',        'diffuse (spread)',     0,     1,    0.01,  0.2],
+  ['dissolve', 'diffuseSpread',  'diffuse reach (texels)', 0.5, 4,    0.1,   1.5],
 
   // ---- paint: how the glyph is written ----------------------------------
-  ['paint', 'traceMs',       'trace time (ms)',      100,   3000, 50,    700],
-  ['paint', 'traceMode',     'trace 0=parallel 1=seq', 0,   1,    1,     0],
-  ['paint', 'promptSize',    'prompt size',          0.3,   0.8,  0.01,  0.5],
+  ['paint', 'traceMs',       'grow time (ms)',       100,   3000, 50,    700],
+  ['paint', 'promptSize',    'prompt size',          0.2,   0.8,  0.01,  0.4],
   ['paint', 'strokeRadius',  'stroke radius',        0.004, 0.05, 0.001, 0.014],
   ['paint', 'strokeAmount',  'stroke ink',           0.05,  1,    0.01,  0.35],
-  ['paint', 'taper',         'taper',                0,     1,    0.05,  0.6],
-  ['paint', 'wobble',        'wobble',               0,     2,    0.05,  0.6],
+  ['paint', 'taper',         'terminal taper',       0,     1,    0.05,  0.4],
+  ['paint', 'wobble',        'wobble',               0,     2,    0.05,  0.25],
+
+  // ---- layout: where the choices go -------------------------------------
+  ['layout', 'layoutMode',    'layout 0=orbit 1=bands', 0,   1,    1,     1],
+  ['layout', 'tileMax',       'tile max (px)',        80,    360,  4,     260],
+  ['layout', 'tileGap',       'tile gap (px)',        0,     40,   1,     8],
 
   // ---- feedback: the pick reaction --------------------------------------
   ['feedback', 'splashAmount',     'splash ink',        0,     1,    0.01,  0.3],
@@ -48,9 +54,9 @@ export const SCHEMA = [
 
   // ---- stage: the darkroom ----------------------------------------------
   ['stage', 'palette',        'palette',              0,     4,    1,     0],
-  ['stage', 'bloomThreshold', 'bloom threshold',      0,     1,    0.01,  0.18],
-  ['stage', 'bloomGain',      'core bloom',           0,     2,    0.05,  0.6],
-  ['stage', 'bloomMix',       'halo bloom',           0,     3,    0.05,  1.2],
+  ['stage', 'bloomThreshold', 'bloom threshold',      0,     1,    0.01,  0.3],
+  ['stage', 'bloomGain',      'core bloom',           0,     2,    0.05,  0.35],
+  ['stage', 'bloomMix',       'halo bloom',           0,     3,    0.05,  0.7],
   ['stage', 'caustic',        'caustic',              0,     18,   0.5,   7],
   ['stage', 'grain',          'grain',                0,     0.2,  0.005, 0.05],
   ['stage', 'vignette',       'vignette',             0,     2.6,  0.05,  1.15],

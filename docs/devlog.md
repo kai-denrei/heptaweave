@@ -3,6 +3,38 @@
 Newest at top. Alternatives we chose *not* to build yet live here so they
 can be picked up later without re-deriving them.
 
+## 2026-09-09 — one-trait Cistercian, band layout, diffusion
+
+Spec: `docs/superpowers/specs/2026-09-09-one-trait-bands-diffusion-design.md`.
+
+### Chosen: growth front from the stem (option A)
+
+`src/cistercian/growthFront.js` tags every point of the numeral with its
+geodesic distance from the stave midpoint; the ink painter reveals
+`d ≤ r(t)` at constant speed. One figure, constant width, no joints. Digit 6
+grows from its own seed the moment the front passes level with it.
+`traceMode` is gone from the schema.
+
+### Alternatives kept for later
+
+**B — one polyline run per digit.** Cheap regrouping of `pathsToSegments`
+output; still reads as up to five strokes. **C — literal pen walk** with
+travel strokes along the stave; adds marks that are not part of the glyph.
+Both are in `.deban/roles/dev.md`.
+
+### Band layout (ink only)
+
+`src/render/ink/bandLayout.js` measures the free bands around the prompt and
+grids the choices into the deeper pair. Phone 7-up tiles go from ~95 px to
+~157 px. `layoutMode` 0 keeps the shared cardinal orbit; paper is untouched.
+
+### Diffusion
+
+`FRAG_DIFFUSE` eases each texel toward its four neighbours per step, so ink
+spreads and thins. Frozen during PAINT/HOLD, ramped with dissipation. Bloom
+defaults lowered; the operator tunes the final values in `#admin` and hands
+back the `copy JSON` output to be baked into `SCHEMA`.
+
 ## 2026-09-03 — ink theme (experimental)
 
 Spec: `docs/superpowers/specs/2026-09-03-ink-theme-design.md`.

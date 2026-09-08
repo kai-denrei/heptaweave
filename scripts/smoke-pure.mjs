@@ -181,5 +181,77 @@ console.log('\nparams');
   ok('dissipFor(0) = 1 (stays)', dissipFor(0) === 1);
 }
 
+
+// ---------------------------------------------------------------------------
+// growth front (one-trait Cistercian)
+// ---------------------------------------------------------------------------
+console.log('growth front');
+{
+  const { cistercianGrowth, cistercianGrowthPx } = await import('../src/cistercian/growthFront.js');
+  const { cistercianSegmentsPx } = await import('../src/cistercian/cistercianInk.js');
+  let allFinite = true, allReach = true, staveOk = true;
+  for (let n = 0; n <= 9999; n += 7) {
+    const { paths, maxD } = cistercianGrowth(n);
+    for (const p of paths) {
+      for (const q of p.points) if (!Number.isFinite(q.d) || q.d < 0) allFinite = false;
+      // Every path starts at its smallest d (front origin first).
+      if (p.points[0].d > Math.min(...p.points.map(q => q.d)) + 1e-9) allReach = false;
+    }
+    if (!(maxD > 0 && maxD <= 3.5)) staveOk = false;
+  }
+  ok('every point has a finite, non-negative distance', allFinite);
+  ok('every path begins at its front origin', allReach);
+  ok('maxD is within the glyph box', staveOk);
+
+  const six = cistercianGrowth(6);
+  const seeded = six.paths.filter(p => p.seeded);
+  ok('digit 6 grows from its own seed (two halves)', seeded.length === 2 && seeded.every(p => Math.abs(p.points[0].d - 1.0) < 1e-9));
+  const nine = cistercianGrowth(9);
+  const ninePath = nine.paths.find(p => p.digit === 9);
+  ok('digit 9 attaches at both ends (fronts meet)', ninePath && ninePath.points[0].d === 0.5 && ninePath.points[3].d === 1.5 && ninePath.points[1].d === 1.5 && ninePath.points[2].d === 2.5);
+  const zero = cistercianGrowth(0);
+  ok('0 is just the stave', zero.paths.length === 2 && Math.abs(zero.maxD - 1.5) < 1e-9);
+
+  // Pixel mapping agrees with the segment builder's endpoints.
+  const px = cistercianGrowthPx({ number: 1234, size: 300, padFrac: 0.1 });
+  const segs = cistercianSegmentsPx({ number: 1234, size: 300, padFrac: 0.1 });
+  const segPts = new Set(segs.flatMap(s => [s.from, s.to]).map(p => `${p.x.toFixed(3)},${p.y.toFixed(3)}`));
+  const growPts = px.paths.flatMap(p => p.points).filter(q => q.d > 1e-9 || true).map(q => `${q.x.toFixed(3)},${q.y.toFixed(3)}`);
+  const covered = [...segPts].every(k => growPts.includes(k));
+  ok('growth px vertices cover every segment endpoint', covered);
+}
+
+// ---------------------------------------------------------------------------
+// band layout
+// ---------------------------------------------------------------------------
+console.log('band layout');
+{
+  const { layoutBands } = await import('../src/render/ink/bandLayout.js');
+  const sizes = [[420, 860], [360, 640], [1024, 700], [800, 800]];
+  let inside = true, disjoint = true, bigger = true;
+  for (const [w, h] of sizes) {
+    const promptSize = Math.min(w, h) * 0.4;
+    for (let count = 2; count <= 7; count++) {
+      const { tileSize, centers } = layoutBands({ width: w, height: h, promptSize, count, gap: 8, maxTile: 220 });
+      const r = tileSize / 2;
+      for (const c of centers) {
+        if (c.x - r < -0.5 || c.y - r < -0.5 || c.x + r > w + 0.5 || c.y + r > h + 0.5) inside = false;
+        // clear of the prompt square
+        if (Math.abs(c.x - w / 2) < promptSize / 2 + r - 0.5 && Math.abs(c.y - h / 2) < promptSize / 2 + r - 0.5) inside = false;
+      }
+      for (let i = 0; i < centers.length; i++) for (let j = i + 1; j < centers.length; j++) {
+        const a = centers[i], b = centers[j];
+        if (Math.abs(a.x - b.x) < tileSize - 0.5 && Math.abs(a.y - b.y) < tileSize - 0.5) disjoint = false;
+      }
+      if (centers.length !== count) inside = false;
+    }
+  }
+  ok('tiles stay inside the container and clear of the prompt', inside);
+  ok('tiles do not overlap', disjoint);
+  const phone = layoutBands({ width: 420, height: 860, promptSize: 168, count: 7, gap: 8, maxTile: 220 });
+  ok(`phone 7-up tile is much bigger than the 95px orbit (got ${phone.tileSize})`, phone.tileSize >= 140);
+}
+
+
 console.log(`\ndone — ${fails} failures`);
 process.exit(fails ? 1 : 0);

@@ -87,6 +87,26 @@ void main() {
   gl_FragColor = base;
 }`;
 
+// Diffusion: each texel eases toward the mean of its four neighbours at
+// `u_spread` texels, so ink spreads and thins instead of only fading. Runs
+// after advection; u_amount = 0 is a no-op.
+export const FRAG_DIFFUSE = `
+precision highp float;
+varying vec2 v_uv;
+uniform sampler2D u_dye;
+uniform vec2  u_texel;
+uniform float u_spread;
+uniform float u_amount;
+void main() {
+  vec2 o = u_texel * u_spread;
+  vec4 c = texture2D(u_dye, v_uv);
+  vec4 n = texture2D(u_dye, v_uv + vec2(o.x, 0.0))
+         + texture2D(u_dye, v_uv - vec2(o.x, 0.0))
+         + texture2D(u_dye, v_uv + vec2(0.0, o.y))
+         + texture2D(u_dye, v_uv - vec2(0.0, o.y));
+  gl_FragColor = mix(c, n * 0.25, u_amount);
+}`;
+
 export const FRAG_PREFILTER = `
 precision highp float;
 varying vec2 v_uv;
