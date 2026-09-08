@@ -69,6 +69,7 @@ export const SCHEMA = [
   ['count', 'countDrift',     'drift ×',              0,     1,    0.05,  0.1],
   ['count', 'countFade',      'fade / step',          0.95,  1,    0.001, 0.996],
   ['count', 'countErase',     'erase reach (px)',     0,     12,   0.5,   3],
+  ['count', 'countReveal',    'new digit 0=dims 1=grows', 0, 1,    1,     1],
 
   // ---- rules: test-mode overrides (−1 / 0 = use the table) --------------
   ['rules', 'pinTier',        'pin tier (−1 = off)',  -1,    9,    1,     -1],

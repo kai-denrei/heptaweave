@@ -269,11 +269,17 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
    * dye in one pass. `rect` is { u, v, w, h } in uv with v bottom-up — see
    * `rectFromClient`.
    */
-  function stamp(source, rect, rgb, amount, { erase = false } = {}) {
+  let maskLast = { source: null, version: -1 };
+  function stamp(source, rect, rgb, amount, { erase = false, version = 0 } = {}) {
     gl.bindTexture(gl.TEXTURE_2D, maskTex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    // Re-upload only when the mask changed: a static erase mask is stamped
+    // every frame for a second, a wedge slice changes every frame.
+    if (maskLast.source !== source || maskLast.version !== version) {
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      maskLast = { source, version };
+    }
     gl.disable(gl.BLEND);
     gl.useProgram(progStamp.p);
     gl.bindFramebuffer(gl.FRAMEBUFFER, dye.write.fbo);

@@ -8,9 +8,11 @@
 //   ∞  dissipation is derived from the tier's revealMs; "stays" tiers drift
 //      without fading and are re-inked periodically.
 //   +  no clock: one large logogram stamped in layers (ring + one per
-//      digit). When the value changes only the digits that changed are
-//      erased and re-stamped; the rest is topped up by exactly the ink the
-//      fade took, so nothing blinks.
+//      digit). When the value changes, the new digit's ink sweeps in along
+//      the ring over the whole period (a growth front, like the Cistercian)
+//      while the old digit's ink is faded out by the fluid over the same
+//      period; the rest is topped up by exactly the ink the fade took, so
+//      nothing blinks.
 // Choices are overlaid SVG logograms in the palette's core colour; the
 // tapped one is splatted into the fluid as the reaction (correct = core
 // colour bloom, wrong = ember splash + drain).
@@ -67,6 +69,10 @@ export function createInkRenderer({ params }) {
   let countLayers = new Map();
   let countGeom = null;      // { rect, size }
   let countShown = null;     // digits currently on the water, or null
+  let countAnims = [];       // in-flight digit transitions, see stepCountAnims()
+  let countScratch = null;   // reusable canvas for wedge slices
+  let countVersion = 0;      // bumps per wedge slice so the mask re-uploads
+  const COUNT_RASTER = 1;    // raster px per CSS px for count layers
   const debug = { frames: 0, steps: 0, firstNow: 0, lastNow: 0, get phase() { return phase; }, get dissip() { return glyph ? glyph.dissip : null; } };
 
   // --------------------------------------------------------------------------
@@ -183,6 +189,7 @@ export function createInkRenderer({ params }) {
     }
 
     if (screen !== 'play' && screen !== 'count') wisps(dt);
+    if (screen === 'count' && countAnims.length) stepCountAnims(now, dt);
 
     acc += dt;
     let steps = 0;
@@ -359,6 +366,70 @@ export function createInkRenderer({ params }) {
   }
 
   // --------------------------------------------------------------------------
+  // + mode transitions: a growth front along the ring for the new digit,
+  // a fluid fade for the old one. Both span the whole period.
+  // --------------------------------------------------------------------------
+  // Angular span of a lobe about the ring centre, from its bbox corners.
+  function wedgeFor(l) {
+    if (!l.box) return null;
+    const { x, y, w, h } = l.box;
+    const c = l.centre;
+    const corners = [[x, y], [x + w, y], [x, y + h], [x + w, y + h]];
+    const angs = corners.map(([px, py]) => Math.atan2(py - c.y, px - c.x));
+    // Unwrap about the first corner so a lobe straddling ±π still spans.
+    const ref = angs[0];
+    const rel = angs.map(a => { let d = a - ref; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; });
+    const pad = 0.04;
+    return { cx: c.x, cy: c.y, a0: ref + Math.min(...rel) - pad, a1: ref + Math.max(...rel) + pad, R: Math.hypot(l.c.width, l.c.height) };
+  }
+  function easeOut(t) { return 1 - Math.pow(1 - t, 2); }
+  // The new layer clipped to the wedge slice [ta, tb] of its angular span.
+  function wedgeSlice(l, wg, ta, tb) {
+    if (!countScratch) countScratch = document.createElement('canvas');
+    const s = countScratch;
+    if (s.width !== l.c.width || s.height !== l.c.height) { s.width = l.c.width; s.height = l.c.height; }
+    const ctx = s.getContext('2d');
+    ctx.clearRect(0, 0, s.width, s.height);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(wg.cx, wg.cy);
+    ctx.arc(wg.cx, wg.cy, wg.R, wg.a0 + (wg.a1 - wg.a0) * ta, wg.a0 + (wg.a1 - wg.a0) * tb);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(l.c, 0, 0);
+    ctx.restore();
+    return s;
+  }
+  function stepCountAnims(now, dt) {
+    const keep = [];
+    for (const a of countAnims) {
+      const t = Math.min(1, (now - a.start) / Math.max(1, a.periodMs));
+      const f0 = easeOut(a.lastT), f1 = easeOut(t);
+      if (f1 > f0) {
+        if (a.wedge) fluid.stamp(wedgeSlice(a.neu, a.wedge, f0, f1), a.rect, a.rgb, a.ink, { version: ++countVersion });
+        else fluid.stamp(a.neu.c, a.rect, a.rgb, a.ink * (f1 - f0));
+      }
+      // Fade the old ink so it reaches the dissolve floor as the period ends.
+      if (a.erase && dt > 0) {
+        const perFrame = 1 - Math.pow(0.02, dt * 1000 / Math.max(1, a.periodMs));
+        fluid.stamp(a.erase, a.rect, a.rgb, perFrame, { erase: true });
+      }
+      a.lastT = t;
+      if (t >= 1) finishCountAnim(a); else keep.push(a);
+    }
+    countAnims = keep;
+  }
+  function finishCountAnim(a) {
+    if (a.lastT < 1) {
+      const f0 = easeOut(a.lastT);
+      if (a.wedge) fluid.stamp(wedgeSlice(a.neu, a.wedge, f0, 1), a.rect, a.rgb, a.ink, { version: ++countVersion });
+      else fluid.stamp(a.neu.c, a.rect, a.rgb, a.ink * (1 - f0));
+    }
+    if (a.erase) fluid.stamp(a.erase, a.rect, a.rgb, 1, { erase: true });
+    a.lastT = 1;
+  }
+
+  // --------------------------------------------------------------------------
   // Contract
   // --------------------------------------------------------------------------
   return {
@@ -433,7 +504,7 @@ export function createInkRenderer({ params }) {
 
     startRun({ mode, totalMs }) {
       run = { mode, timeRemainingMs: totalMs, totalMs };
-      countShown = null; countGeom = null;
+      countShown = null; countGeom = null; countAnims = [];
       lastBitCount = 0;
       els.choices.replaceChildren();
       painter.cancel();
@@ -481,18 +552,37 @@ export function createInkRenderer({ params }) {
         svg.setAttribute('color', '#fff');
         return svg;
       };
-      const layer = (key, hide) => {
+      // A layer is { c: canvas, box: lobe bounds in raster px | null,
+      // centre: ring centre in raster px }. The bbox comes from a temporary
+      // DOM attach (getBBox needs layout); raster px = 2 × user units + pad.
+      const layer = (key, hide, place = -1) => {
         if (!countLayers.has(key)) {
           const svg = svgFor(n);
           for (const el of svg.querySelectorAll(hide)) el.setAttribute('display', 'none');
-          countLayers.set(key, rasterizeSvg(svg, 2));
+          let box = null;
+          const vb = (svg.getAttribute('viewBox') || '0 0 1 1').split(/\s+/).map(Number);
+          const vbSize = Number(svg.getAttribute('width')) || 1;
+          const toRaster = (u) => (u - vb[0]) * COUNT_RASTER;
+          if (place >= 0) {
+            els.countStage.appendChild(svg);
+            try {
+              const g = svg.querySelector(`.ink-crisp .lobe[data-place="${place}"]`);
+              const b = g ? g.getBBox() : null;
+              if (b && b.width > 0 && b.height > 0) {
+                box = { x: toRaster(b.x), y: toRaster(b.y), w: b.width * COUNT_RASTER, h: b.height * COUNT_RASTER };
+              }
+            } catch {}
+            svg.remove();
+          }
+          const centre = { x: toRaster(size / 2), y: toRaster(size / 2) };
+          countLayers.set(key, rasterizeSvg(svg, COUNT_RASTER).then((c) => ({ c, box, centre })));
         }
         return countLayers.get(key);
       };
       const ringP = layer(`ring:${size}`, '.lobe');
-      const digitP = digits.map((d, i) => layer(`d:${size}:${i}:${d}`, `.enso, .wet-drop, .lobe:not([data-place="${i}"])`));
+      const digitP = digits.map((d, i) => layer(`d:${size}:${i}:${d}`, `.enso, .wet-drop, .lobe:not([data-place="${i}"])`, i));
       const prev = countShown;
-      const prevP = prev ? prev.map((d, i) => (d === digits[i]) ? null : layer(`d:${size}:${i}:${d}`, `.enso, .wet-drop, .lobe:not([data-place="${i}"])`)) : [];
+      const prevP = prev ? prev.map((d, i) => (d === digits[i]) ? null : layer(`d:${size}:${i}:${d}`, `.enso, .wet-drop, .lobe:not([data-place="${i}"])`, i)) : [];
 
       Promise.all([ringP, ...digitP, ...prevP]).then(([ring, ...rest]) => {
         if (token !== countToken || screen !== 'count') return;
@@ -500,24 +590,36 @@ export function createInkRenderer({ params }) {
         // Geometry from the ring: the ink box scales to `countSize` of the
         // short side; every layer shares the raster size so one rect fits all.
         if (!countGeom || countGeom.size !== size) {
-          const bb = alphaBounds(ring);
+          const bb = alphaBounds(ring.c);
           if (!bb) throw new Error('empty raster');
           const k = (short * params.get('countSize')) / Math.max(bb.w, bb.h);
-          const w = ring.width * k, h = ring.height * k;
+          const w = ring.c.width * k, h = ring.c.height * k;
           const cx = stage.left + stage.width / 2, cy = stage.top + stage.height / 2;
           countGeom = { size, rect: fluid.rectFromClient(cx - (bb.x + bb.w / 2) * k, cy - (bb.y + bb.h / 2) * k, w, h) };
         }
         const { rect } = countGeom;
-        const reach = params.get('countErase') * 2; // raster is 2×
+        const reach = params.get('countErase') * COUNT_RASTER;
         if (!prev) {
-          fluid.stamp(ring, rect, rgb, ink);
-          for (const c of news) fluid.stamp(c, rect, rgb, ink);
+          fluid.stamp(ring.c, rect, rgb, ink);
+          for (const l of news) fluid.stamp(l.c, rect, rgb, ink);
         } else {
-          fluid.stamp(ring, rect, rgb, topUp);
+          fluid.stamp(ring.c, rect, rgb, topUp);
           digits.forEach((d, i) => {
-            if (d === prev[i]) { fluid.stamp(news[i], rect, rgb, topUp); return; }
-            fluid.stamp(dilate(olds[i], reach, ring), rect, rgb, 1, { erase: true });
-            fluid.stamp(news[i], rect, rgb, ink);
+            if (d === prev[i]) { fluid.stamp(news[i].c, rect, rgb, topUp); return; }
+            // Hand the change to the frame loop: sweep the new ink in and
+            // fade the old ink out over `periodMs`. A transition already
+            // running on this place is finished first.
+            const running = countAnims.findIndex(a => a.place === i);
+            if (running >= 0) { finishCountAnim(countAnims[running]); countAnims.splice(running, 1); }
+            // Marks both digits share are already on the water: they are
+            // neither faded (old − new) nor re-inked (new − old).
+            const erase = olds[i] ? dilate(olds[i].c, reach, ring.c, news[i].c) : null;
+            const fresh = olds[i] ? { ...news[i], c: dilate(news[i].c, 0, olds[i].c) } : news[i];
+            countAnims.push({
+              place: i, neu: fresh, erase, rect, rgb, ink,
+              wedge: params.get('countReveal') >= 1 ? wedgeFor(news[i]) : null,
+              start: performance.now(), periodMs, lastT: 0,
+            });
           });
         }
         countShown = digits;
@@ -533,7 +635,7 @@ export function createInkRenderer({ params }) {
         els.countStage.replaceChildren(svg);
         startDrain(200, 0.8);
         painter.splashSvg(svg, coreRgb(), { amount: ink * 0.6, radiusPx: target * 0.012, spacingPx: 6 });
-        countShown = null;
+        countShown = null; countAnims = [];
       });
     },
 
@@ -582,7 +684,7 @@ function rasterizeSvg(svg, scale = 1) {
 // A copy of `c` with its alpha grown by `r` px in eight directions, so an
 // erase covers ink that drifted a little since it was stamped; `keep` (the
 // ring layer) is punched out so the erase never notches the ring.
-function dilate(c, r, keep = null) {
+function dilate(c, r, ...keeps) {
   const out = document.createElement('canvas');
   out.width = c.width; out.height = c.height;
   const ctx = out.getContext('2d');
@@ -597,11 +699,12 @@ function dilate(c, r, keep = null) {
       ctx.drawImage(c, Math.cos(t) * r * 0.5, Math.sin(t) * r * 0.5);
     }
   }
-  if (keep) {
+  for (const keep of keeps) {
+    if (!keep) continue;
     ctx.globalCompositeOperation = 'destination-out';
     ctx.drawImage(keep, 0, 0);
-    ctx.globalCompositeOperation = 'source-over';
   }
+  ctx.globalCompositeOperation = 'source-over';
   return out;
 }
 

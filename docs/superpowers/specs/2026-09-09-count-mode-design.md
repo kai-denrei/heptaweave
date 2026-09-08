@@ -37,17 +37,24 @@ stable." Answered in-session: one per second (stopwatch), 1 s hold to leave.
   a ring layer and one layer per digit place (`numeralV2` wraps each lobe in
   `<g class="lobe" data-place>`; `lobeRng: true` gives each lobe its own
   rng stream so a digit's marks depend only on place and value; fixed seed).
-  Layers cache by key. On a tick: changed digits are erased (`FRAG_STAMP`
-  erase mode, mask dilated by `countErase` px with the ring punched out) and
-  re-stamped at `countInk`; the ring and unchanged digits get a top-up of
+  Layers cache by key. On a tick the change is handed to the frame loop as a
+  transition spanning the whole period (operator: "it grows over 1 second …
+  or dims"): the new digit's ink that the old digit did not already have
+  sweeps in as an angular growth front about the ring centre
+  (`countReveal` 1) or dims in (`countReveal` 0); the old digit's ink that
+  the new one does not share is faded by the fluid (`FRAG_STAMP` erase mode
+  each frame, reaching the dissolve floor as the period ends; mask dilated by
+  `countErase` px with the ring and the new digit punched out). Shared marks
+  are untouched. The ring and unchanged digits get a top-up of
   `countInk × (1 − countFade^60)`, exactly what the fade removed, so they
-  neither blink nor decay.
+  neither blink nor decay. Mask uploads are cached per source so the static
+  erase mask costs one upload per transition.
 - Hold: `wireHold` (1 s pointerdown) on the count screen. A tap does nothing.
 
 ## Params (group `count`)
 
 `countSize` (ink bounding box as a fraction of the short side, measured from the raster's alpha; 0.8), `countInk` (0.22), `countDrift`,
-`countFade`, `countErase`. All live in `#admin`.
+`countFade`, `countErase`, `countReveal`. All live in `#admin`.
 
 ## Verification
 

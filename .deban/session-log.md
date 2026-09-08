@@ -153,3 +153,4 @@ deban-sync commit landing now.
 2026-09-09 01:20 — SYNC — + count mode (stopwatch logogram in ink, stamp pass, hold to leave). Roles: pm, dev, design, arch. Dead end: path-splatting the numeral.
 2026-09-09 01:50 — SYNC — blank count page = stale modules; bust + SW v5; numeral sized to 80% from alpha bounds. Lesson recorded in dev.
 2026-09-09 02:20 — SYNC — count mode redraws only changed digits (layers, erase + top-up); ink dimmed. Roles: dev.
+2026-09-09 03:00 — SYNC — count ticks animate (sweep in / fade out over the period); shared marks untouched; mask upload cache. Roles: dev, design.
