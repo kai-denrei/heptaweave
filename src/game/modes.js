@@ -1,4 +1,4 @@
-// modes.js — ⧖ and ∞ rule packs.
+// modes.js — ⧖, ∞ and + rule packs.
 
 import { MODE } from './state.js';
 
@@ -18,6 +18,18 @@ export const MODE_CONFIG = {
     // First wrong ends the run.
     endOnError: true,
     showTimerRing: false,
+  },
+  // + is not a game: one large logogram counting up from zero, one per
+  // second, wrapping at the four-digit ceiling. No score, no choices.
+  [MODE.COUNT]: {
+    symbol: '+',
+    initialTimeMs: 0,
+    penaltyMs: 0,
+    endOnError: false,
+    showTimerRing: false,
+    counter: true,
+    periodMs: 1000,
+    wrapAt: 10000,
   },
 };
 

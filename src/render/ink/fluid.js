@@ -11,7 +11,7 @@
 // No DOM beyond the canvas it is given. No rules. See ../../params.js for
 // the knobs that feed `step()` and `render()`.
 
-import { VERT, FRAG_ADVECT, FRAG_SPLAT, FRAG_DIFFUSE, FRAG_PREFILTER, FRAG_BLUR, FRAG_DISPLAY } from './shaders.js';
+import { VERT, FRAG_ADVECT, FRAG_SPLAT, FRAG_STAMP, FRAG_DIFFUSE, FRAG_PREFILTER, FRAG_BLUR, FRAG_DISPLAY } from './shaders.js';
 import { PALETTES, buildLut, paletteAt } from './palettes.js';
 
 const GL_OPTS = {
@@ -131,6 +131,7 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
   const progAdvect = program(FRAG_ADVECT);
   const progSplat = program(FRAG_SPLAT);
   const progDiffuse = program(FRAG_DIFFUSE);
+  const progStamp = program(FRAG_STAMP);
   const progPre = program(FRAG_PREFILTER);
   const progBlur = program(FRAG_BLUR);
   const progDisplay = program(FRAG_DISPLAY);
@@ -255,6 +256,39 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     diffuse(cfg);
   }
 
+  // Mask texture for `stamp()`; re-uploaded per call.
+  const maskTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, maskTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+  /**
+   * Add a rasterised shape (a canvas/image whose alpha is the mask) into the
+   * dye in one pass. `rect` is { u, v, w, h } in uv with v bottom-up — see
+   * `rectFromClient`.
+   */
+  function stamp(source, rect, rgb, amount) {
+    gl.bindTexture(gl.TEXTURE_2D, maskTex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.disable(gl.BLEND);
+    gl.useProgram(progStamp.p);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dye.write.fbo);
+    gl.viewport(0, 0, SW, SH);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, dye.read.tex);
+    gl.uniform1i(progStamp.u.u_dye, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, maskTex);
+    gl.uniform1i(progStamp.u.u_mask, 1);
+    gl.uniform4f(progStamp.u.u_rect, rect.u, rect.v, rect.w, rect.h);
+    gl.uniform3f(progStamp.u.u_color, rgb[0], rgb[1], rgb[2]);
+    gl.uniform1f(progStamp.u.u_amount, amount);
+    drawQuad();
+    dye.swap();
+  }
+
   /** Extra dissipation pass (wrong answer, run end, clear). */
   function drain(dissip, cfg = {}) {
     advect(1 / 60, { ...cfg, dissip, flowStr: cfg.flowStr ?? 1.4 });
@@ -339,6 +373,13 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     };
   }
 
+  /** A client-space rect (CSS px) as a uv rect with v bottom-up. */
+  function rectFromClient(x, y, w, h) {
+    const r = canvas.getBoundingClientRect();
+    const W = r.width || 1, H = r.height || 1;
+    return { u: (x - r.left) / W, v: 1 - (y + h - r.top) / H, w: w / W, h: h / H };
+  }
+
   function canvasHeightCss() {
     return canvas.getBoundingClientRect().height || canvas.clientHeight || 1;
   }
@@ -358,6 +399,8 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     step,
     drain,
     splat,
+    stamp,
+    rectFromClient,
     render,
     clear() { dye.clear(); },
     uvFromClient,
@@ -365,8 +408,9 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
       if (dye) dye.free();
       freeTarget(pre); freeTarget(bloomA); freeTarget(bloomB);
       gl.deleteTexture(lutTex);
+      gl.deleteTexture(maskTex);
       gl.deleteBuffer(quad);
-      for (const p of [progAdvect, progSplat, progDiffuse, progPre, progBlur, progDisplay]) gl.deleteProgram(p.p);
+      for (const p of [progAdvect, progSplat, progStamp, progDiffuse, progPre, progBlur, progDisplay]) gl.deleteProgram(p.p);
     },
   };
 }

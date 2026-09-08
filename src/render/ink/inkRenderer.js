@@ -7,6 +7,9 @@
 //      stage light dims across the run; a wrong answer is a drain pulse.
 //   ∞  dissipation is derived from the tier's revealMs; "stays" tiers drift
 //      without fading and are re-inked periodically.
+//   +  no clock: one large logogram is splatted whole each time the count
+//      changes, held nearly still, and drained in the last `countDrainMs`
+//      before the next value lands.
 // Choices are overlaid SVG logograms in the palette's core colour; the
 // tapped one is splatted into the fluid as the reaction (correct = core
 // colour bloom, wrong = ember splash + drain).
@@ -58,6 +61,8 @@ export function createInkRenderer({ params }) {
   let screen = 'landing';
   let run = { mode: null, timeRemainingMs: 0, totalMs: 0 };
   let wispAcc = 0;
+  let count = { at: 0, periodMs: 1000 };   // + mode: when the value last changed
+  let countToken = 0;
   const debug = { frames: 0, steps: 0, firstNow: 0, lastNow: 0, get phase() { return phase; }, get dissip() { return glyph ? glyph.dissip : null; } };
 
   // --------------------------------------------------------------------------
@@ -118,7 +123,11 @@ export function createInkRenderer({ params }) {
   function stepConfig(now) {
     const cfg = baseFlow();
     const diffuse = params.get('diffuse');
-    if (phase === 'paint' || phase === 'hold') {
+    if (screen === 'count') {
+      cfg.dissip = params.get('countFade');
+      cfg.flowStr = params.get('flowStrength') * params.get('countDrift');
+      cfg.diffuse = 0;
+    } else if (phase === 'paint' || phase === 'hold') {
       cfg.dissip = 1; cfg.flowStr = 0; cfg.diffuse = 0;
     } else if (phase === 'ramp') {
       const t = easeInOut(Math.min(1, (now - phaseStart) / Math.max(1, params.get('rampMs'))));
@@ -169,7 +178,13 @@ export function createInkRenderer({ params }) {
       if (every > 0 && now - lastReink >= every) { painter.reink(0.2); lastReink = now; }
     }
 
-    if (screen !== 'play') wisps(dt);
+    if (screen !== 'play' && screen !== 'count') wisps(dt);
+    if (screen === 'count') {
+      const drainMs = params.get('countDrainMs');
+      if (drainMs > 0 && now - count.at >= count.periodMs - drainMs) {
+        drainUntil = now + 1; drainDissip = params.get('countDrainFade');
+      }
+    }
 
     acc += dt;
     let steps = 0;
@@ -370,6 +385,8 @@ export function createInkRenderer({ params }) {
         bigHeptacipher: document.getElementById('bigHeptacipher'),
         bigCistercian:  document.getElementById('bigCistercian'),
         gameDot:        document.getElementById('gameOverDot'),
+        count:          document.getElementById('screenCount'),
+        countStage:     document.getElementById('countStage'),
       };
       fluid = createFluid(els.canvas, { simScale: params.get('simScale') });
       if (!fluid.ok) return;
@@ -385,6 +402,7 @@ export function createInkRenderer({ params }) {
         btn.addEventListener('click', () => { if (btn.dataset.mode) on.modeSelect(btn.dataset.mode); });
       });
       els.gameover.addEventListener('click', on.gameOverTap);
+      if (els.count && on.countHold) wireHold(els.count, on.countHold);
       if (els.cornerHold && on.cornerHold) wireHold(els.cornerHold, on.cornerHold);
 
       let resizeT = null;
@@ -412,6 +430,7 @@ export function createInkRenderer({ params }) {
       els.landing.hidden = (name !== 'landing');
       els.play.hidden = (name !== 'play');
       els.gameover.hidden = (name !== 'gameover');
+      if (els.count) els.count.hidden = (name !== 'count');
     },
 
     startRun({ mode, totalMs }) {
@@ -434,6 +453,33 @@ export function createInkRenderer({ params }) {
       run = { mode, timeRemainingMs, totalMs };
     },
 
+    // The + mode. The logogram is rasterised to a canvas and stamped into
+    // the dye in one pass (its paths are far too long to splat). The raster
+    // is async (SVG → Image); a later value cancels an earlier one in flight.
+    renderCount({ value, seed, periodMs = 1000 }) {
+      if (!els.countStage || !fluid.ok) return;
+      const stage = els.countStage.getBoundingClientRect();
+      const size = Math.round(Math.min(stage.width, stage.height) * params.get('countSize'));
+      const svg = renderHeptapodNumeralV2({
+        number: Math.max(0, value | 0) % 10000,
+        size,
+        seed: 0xc0ffee ^ (seed * 2654435761),
+        ...HEPTAWEAVE_CHOICE_TUNE, ...loadTune(),
+        haloOpacity: 0,
+      });
+      svg.setAttribute('color', '#fff');
+      const token = ++countToken;
+      count = { at: performance.now(), periodMs };
+      drainUntil = 0;
+      rasterizeSvg(svg, 2).then((bmp) => {
+        if (token !== countToken || screen !== 'count') return;
+        const w = bmp.width / 2, h = bmp.height / 2;
+        const x = stage.left + (stage.width - w) / 2;
+        const y = stage.top + (stage.height - h) / 2;
+        fluid.stamp(bmp, fluid.rectFromClient(x, y, w, h), coreRgb().map(c => c * 3), params.get('countInk'));
+      }).catch(() => {});
+    },
+
     showGameOver({ score, clean }) {
       renderBigBinary(score);
       renderBigHeptacipher(score);
@@ -452,6 +498,28 @@ export function createInkRenderer({ params }) {
       run = { mode: null, timeRemainingMs: 0, totalMs: 0 };
     },
   };
+}
+
+// SVG element → canvas at `scale`× its width/height attributes. The numeral's
+// filters and fills are inline, so the serialised document is self-contained.
+function rasterizeSvg(svg, scale = 1) {
+  return new Promise((resolve, reject) => {
+    const w = Math.max(1, Math.round(Number(svg.getAttribute('width')) || 100));
+    const h = Math.max(1, Math.round(Number(svg.getAttribute('height')) || w));
+    const xml = new XMLSerializer().serializeToString(svg);
+    const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const c = document.createElement('canvas');
+      c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      resolve(c);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('svg raster failed')); };
+    img.src = url;
+  });
 }
 
 function wireHold(el, fn) {

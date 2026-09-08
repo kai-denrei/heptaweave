@@ -9,6 +9,7 @@
 //   ANSWER_OK      — correct; score++; queue next round
 //   ANSWER_BAD     — wrong; mode-specific penalty; queue next round or GAME_OVER
 //   GAME_OVER      — show summary; tap to return to LANDING
+//   COUNT          — the + mode: no rounds, a number counting up; hold to leave
 //
 // The store is a tiny event-emitter with a getState() + on(fn) + dispatch(action).
 
@@ -21,11 +22,13 @@ export const PHASE = Object.freeze({
   ANSWER_OK: 'ANSWER_OK',
   ANSWER_BAD: 'ANSWER_BAD',
   GAME_OVER: 'GAME_OVER',
+  COUNT: 'COUNT',        // + counter running; hold to leave
 });
 
 export const MODE = Object.freeze({
   TIMED: 'TIMED', // ⧖
   ENDLESS: 'ENDLESS', // ∞
+  COUNT: 'COUNT', // +
 });
 
 export function createStore(initial) {

@@ -7,9 +7,10 @@
 //
 //   mount({ root, on })        — build/gather DOM once. `on` carries callbacks:
 //                                on.modeSelect(mode), on.gameOverTap(),
+//                                on.countHold() (1 s press on the count screen),
 //                                on.cornerHold() (1 s press on landing's
 //                                bottom-right — themes may use it or not).
-//   showScreen(name)           — 'landing' | 'play' | 'gameover'
+//   showScreen(name)           — 'landing' | 'play' | 'gameover' | 'count'
 //   startRun({ mode, totalMs })
 //   paintPrompt({ number, seed, revealMs, mode, timeRemainingMs, totalMs })
 //   clearPrompt({ reason })    — 'reveal' | 'correct' | 'wrong' | 'end'
@@ -18,6 +19,7 @@
 //   renderScore({ score, animateNewBit })
 //   tick({ dt, mode, phase, timeRemainingMs, totalMs })  — every frame in play
 //   showGameOver({ mode, score, errors, clean })
+//   renderCount({ value, seed, periodMs })  — the + mode's number changed
 //   teardown()
 //
 //   delays: { correct, wrongContinue, wrongEnd } — ms main.js waits after a
@@ -34,6 +36,7 @@ export const noopRenderer = {
   renderScore() {},
   tick() {},
   showGameOver() {},
+  renderCount() {},
   teardown() {},
   delays: { correct: 380, wrongContinue: 700, wrongEnd: 600 },
 };

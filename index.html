@@ -67,6 +67,18 @@
       transition: transform 120ms var(--ease-out), opacity 200ms;
     }
     .mode-btn:hover, .mode-btn:active { opacity: 1; transform: scale(1.04); }
+    /* + sits on the right edge, level with the middle, off the column. */
+    .mode-btn[data-mode="COUNT"] {
+      position: absolute; right: max(4vw, env(safe-area-inset-right)); top: 50%;
+      transform: translateY(-50%); font-size: 84px; padding: 24px;
+    }
+    .mode-btn[data-mode="COUNT"]:hover, .mode-btn[data-mode="COUNT"]:active { transform: translateY(-50%) scale(1.04); }
+
+    /* ====== COUNT ====== */
+    .count { display: flex; align-items: center; justify-content: center; }
+    /* The numeral is measured and splatted from here; it is never shown. */
+    .count-stage { position: absolute; inset: 0; opacity: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+    .count-stage svg { display: block; }
     .mode-btn[data-mode="ENDLESS"] { font-size: 112px; }
     .corner-hold {
       position: absolute; right: 0; bottom: 0;
@@ -291,6 +303,7 @@
     <section class="screen landing" id="screenLanding">
       <button class="mode-btn" data-mode="TIMED" aria-label="Timed mode">⧖</button>
       <button class="mode-btn" data-mode="ENDLESS" aria-label="Endless mode">∞</button>
+      <button class="mode-btn" data-mode="COUNT" aria-label="Count mode">+</button>
       <a class="paper-link" href="paper.html" aria-label="paper theme">▢</a>
       <button class="corner-hold" id="cornerHold" aria-hidden="true" tabindex="-1"></button>
     </section>
@@ -302,6 +315,10 @@
       <div class="play-mid" id="playMid">
         <div class="choices" id="choices"></div>
       </div>
+    </section>
+
+    <section class="screen count" id="screenCount" hidden>
+      <div class="count-stage" id="countStage" aria-hidden="true"></div>
     </section>
 
     <section class="screen gameover" id="screenGameOver" hidden>

@@ -3,6 +3,22 @@
 Newest at top. Alternatives we chose *not* to build yet live here so they
 can be picked up later without re-deriving them.
 
+## 2026-09-09 — + count mode
+
+Spec: `docs/superpowers/specs/2026-09-09-count-mode-design.md`.
+
+Not a game: `+` on the landing's right edge opens one large heptaweave
+logogram in ink that counts up from zero once a second. Rules side is a
+`counter` flag in `MODE_CONFIG` and a `COUNT` phase; the renderer stamps a
+rasterised SVG into the dye in one GL pass (`FRAG_STAMP`) and drains the
+fluid for the last 300 ms of every second. Hold 1 s to leave.
+
+### Alternatives kept for later
+
+**Tap to increment** (tally counter) and **tap to reset** — both rejected
+for v1 in favour of the stopwatch; the loop already computes the value from
+elapsed time, so either is a small change in `countTick`.
+
 ## 2026-09-09 — one-trait Cistercian, band layout, diffusion
 
 Spec: `docs/superpowers/specs/2026-09-09-one-trait-bands-diffusion-design.md`.

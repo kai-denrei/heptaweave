@@ -107,6 +107,26 @@ void main() {
   gl_FragColor = mix(c, n * 0.25, u_amount);
 }`;
 
+// Stamp: add a rasterised mask (alpha) into the dye inside a uv rect, in one
+// pass. Used for the + mode's logogram, which is too long a path to splat.
+export const FRAG_STAMP = `
+precision highp float;
+varying vec2 v_uv;
+uniform sampler2D u_dye;
+uniform sampler2D u_mask;
+uniform vec4  u_rect;     // x, y, w, h in uv (GL, bottom-up)
+uniform vec3  u_color;
+uniform float u_amount;
+void main() {
+  vec4 base = texture2D(u_dye, v_uv);
+  vec2 m = (v_uv - u_rect.xy) / u_rect.zw;
+  float inside = step(0.0, m.x) * step(m.x, 1.0) * step(0.0, m.y) * step(m.y, 1.0);
+  float f = texture2D(u_mask, clamp(m, 0.0, 1.0)).a * inside;
+  base.rgb += u_color * f * u_amount;
+  base.a   += f * u_amount;
+  gl_FragColor = base;
+}`;
+
 export const FRAG_PREFILTER = `
 precision highp float;
 varying vec2 v_uv;

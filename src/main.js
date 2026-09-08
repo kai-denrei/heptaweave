@@ -131,6 +131,7 @@ export function boot({ renderer, params = null, onCornerHold = null }) {
     best: loadBest(),
     round: null,
     awaiting: false,
+    count: 0,
   });
 
   let rafId = null;
@@ -265,6 +266,7 @@ export function boot({ renderer, params = null, onCornerHold = null }) {
       awaiting: false,
       phase: PHASE.ROUND_INIT,
     });
+    if (MODE_CONFIG[mode]?.counter) { startCount(mode); return; }
     renderer.startRun({ mode, totalMs: initialTimeMs });
     renderer.renderScore({ score: 0, animateNewBit: false });
     renderer.showScreen('play');
@@ -272,6 +274,31 @@ export function boot({ renderer, params = null, onCornerHold = null }) {
     if (rafId) cancelAnimationFrame(rafId);
     loop();
     startRound();
+  }
+
+  // The + mode: no rounds. A value that increments every `periodMs` from
+  // zero and wraps at `wrapAt`; the renderer is told each time it changes.
+  // Leaving is the renderer's hold gesture → backToLanding.
+  let countStart = 0;
+  function startCount(mode) {
+    const cfg = MODE_CONFIG[mode];
+    countStart = performance.now();
+    store.set({ phase: PHASE.COUNT, count: 0 });
+    renderer.startRun({ mode, totalMs: 0 });
+    renderer.showScreen('count');
+    renderer.renderCount({ value: 0, seed: 1, periodMs: cfg.periodMs });
+    lastTick = countStart;
+    if (rafId) cancelAnimationFrame(rafId);
+    loop();
+  }
+  function countTick(now) {
+    const s = store.get();
+    const cfg = MODE_CONFIG[s.mode];
+    const value = Math.floor((now - countStart) / cfg.periodMs) % cfg.wrapAt;
+    if (value !== s.count) {
+      store.set({ count: value });
+      renderer.renderCount({ value, seed: value + 1, periodMs: cfg.periodMs });
+    }
   }
 
   function loop() {
@@ -282,6 +309,7 @@ export function boot({ renderer, params = null, onCornerHold = null }) {
 
     const s = store.get();
     if (s.phase === PHASE.GAME_OVER || s.phase === PHASE.LANDING) return;
+    if (s.phase === PHASE.COUNT) { countTick(now); return; }
 
     let next = s.timeRemainingMs;
     if (s.mode === MODE.TIMED) {
@@ -319,6 +347,7 @@ export function boot({ renderer, params = null, onCornerHold = null }) {
     on: {
       modeSelect: startGame,
       gameOverTap: backToLanding,
+      countHold: backToLanding,
       cornerHold: onCornerHold,
     },
   });

@@ -122,6 +122,7 @@ Blocked by:
 Feeds into: [[dev]]
 
 ## Session Log
+- 2026-09-09 (+ count mode) — First mode that is not a round loop. Handled with a `counter` flag in `MODE_CONFIG` and a `COUNT` phase rather than a second state machine; the Renderer contract grew `showScreen('count')`, `renderCount`, `on.countHold`. `noopRenderer` covers themes that do not implement it. The prompt/choice-kind axis from the inversion question is still unbuilt and unaffected.
 - 2026-09-03 (to-do intents resolved) — Inversion confirmed, so the `promptKind`/`choiceKind` axis is now definitely needed: recommended in `MODE_CONFIG` (closeness rules likely differ per glyph system) and as a modifier orthogonal to ⧖/∞ rather than a third mode. Noted that the Renderer contract currently hard-assumes Cistercian-prompt / logogram-choice.
 - 2026-09-03 (ink theme + promotion) — Renderer seam; own fluid engine; analytic dissolve clock; params layer. Ink promoted to default the same day (rename + PWA head; no renderer or rules change — the seam held). Open question for the next pass: a third mode (to-do 2) needs `MODE_CONFIG` to carry which renderer draws the prompt vs the choices, which is the first thing the contract does not currently express.
 - 2026-05-21 (PWA hardening) — SW update lifecycle moved from auto-takeover to opt-in (page-driven `SKIP_WAITING`). Navigation preload enabled. Runtime cache now FIFO-capped at 40. Install affordance gated to game-over with localStorage dismissal. CACHE_VERSION bumped to v2.

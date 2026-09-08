@@ -63,6 +63,14 @@ export const SCHEMA = [
   ['stage', 'baseLight',      'stage light',          0,     1.5,  0.05,  1],
   ['stage', 'timedDimming',   '⧖ dim by run end',     0,     1,    0.05,  0.7],
 
+  // ---- count: the + mode's one big logogram -----------------------------
+  ['count', 'countSize',      'numeral size',         0.3,   1.6,  0.01,  1.15],
+  ['count', 'countInk',       'numeral ink',          0.05,  1,    0.01,  0.5],
+  ['count', 'countDrift',     'drift ×',              0,     1,    0.05,  0.1],
+  ['count', 'countFade',      'fade / step',          0.95,  1,    0.001, 0.996],
+  ['count', 'countDrainMs',   'drain before next (ms)', 0,   900,  10,    300],
+  ['count', 'countDrainFade', 'drain fade / step',    0.7,   0.99, 0.005, 0.86],
+
   // ---- rules: test-mode overrides (−1 / 0 = use the table) --------------
   ['rules', 'pinTier',        'pin tier (−1 = off)',  -1,    9,    1,     -1],
   ['rules', 'choiceCount',    'choices (0 = table)',  0,     7,    1,     0],
