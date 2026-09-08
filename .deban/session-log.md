@@ -154,3 +154,4 @@ deban-sync commit landing now.
 2026-09-09 01:50 — SYNC — blank count page = stale modules; bust + SW v5; numeral sized to 80% from alpha bounds. Lesson recorded in dev.
 2026-09-09 02:20 — SYNC — count mode redraws only changed digits (layers, erase + top-up); ink dimmed. Roles: dev.
 2026-09-09 03:00 — SYNC — count ticks animate (sweep in / fade out over the period); shared marks untouched; mask upload cache. Roles: dev, design.
+2026-09-09 03:40 — SYNC — count: trickle keep-alive at a breathing anchor; no brightness steps. Roles: dev, design.

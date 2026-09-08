@@ -45,16 +45,23 @@ stable." Answered in-session: one per second (stopwatch), 1 s hold to leave.
   the new one does not share is faded by the fluid (`FRAG_STAMP` erase mode
   each frame, reaching the dissolve floor as the period ends; mask dilated by
   `countErase` px with the ring and the new digit punched out). Shared marks
-  are untouched. The ring and unchanged digits get a top-up of
-  `countInk × (1 − countFade^60)`, exactly what the fade removed, so they
-  neither blink nor decay. Mask uploads are cached per source so the static
+  are untouched (and keep being topped up during the transition).
+- **Breathing, no refresh** (operator: "the ring should also breathe a
+  little, slow drift, and it should not refresh with sudden changes in
+  brightness"). The keep-alive is a per-frame trickle: the ink the fade
+  removed since the last trickle is stamped back as soon as it reaches a
+  dose that survives byte textures (~every 100–200 ms at defaults), never a
+  once-a-second top-up. The stamp anchor breathes: scale swells by
+  `countBreathe` % over `countBreatheS` seconds and the figure drifts on
+  two slower sines; ink follows through the fluid because the trickle lands
+  at the moving anchor while the old position fades, leaving soft trails. Mask uploads are cached per source so the static
   erase mask costs one upload per transition.
 - Hold: `wireHold` (1 s pointerdown) on the count screen. A tap does nothing.
 
 ## Params (group `count`)
 
 `countSize` (ink bounding box as a fraction of the short side, measured from the raster's alpha; 0.8), `countInk` (0.22), `countDrift`,
-`countFade`, `countErase`, `countReveal`. All live in `#admin`.
+`countFade`, `countErase`, `countReveal`, `countBreathe`, `countBreatheS`. All live in `#admin`.
 
 ## Verification
 

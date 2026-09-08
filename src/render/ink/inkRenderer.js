@@ -11,8 +11,9 @@
 //      digit). When the value changes, the new digit's ink sweeps in along
 //      the ring over the whole period (a growth front, like the Cistercian)
 //      while the old digit's ink is faded out by the fluid over the same
-//      period; the rest is topped up by exactly the ink the fade took, so
-//      nothing blinks.
+//      period. Everything else is topped up continuously by exactly the ink
+//      the fade takes, at an anchor that breathes (slow scale + drift), so
+//      the figure moves like something alive and never steps in brightness.
 // Choices are overlaid SVG logograms in the palette's core colour; the
 // tapped one is splatted into the fluid as the reaction (correct = core
 // colour bloom, wrong = ember splash + drain).
@@ -70,6 +71,8 @@ export function createInkRenderer({ params }) {
   let countGeom = null;      // { rect, size }
   let countShown = null;     // digits currently on the water, or null
   let countAnims = [];       // in-flight digit transitions, see stepCountAnims()
+  let countCurrent = null;   // { ring, digits: layer[4] } being kept alive
+  let countOwed = 0;         // top-up ink accrued since the last trickle stamp
   let countScratch = null;   // reusable canvas for wedge slices
   let countVersion = 0;      // bumps per wedge slice so the mask re-uploads
   const COUNT_RASTER = 1;    // raster px per CSS px for count layers
@@ -189,7 +192,6 @@ export function createInkRenderer({ params }) {
     }
 
     if (screen !== 'play' && screen !== 'count') wisps(dt);
-    if (screen === 'count' && countAnims.length) stepCountAnims(now, dt);
 
     acc += dt;
     let steps = 0;
@@ -199,6 +201,8 @@ export function createInkRenderer({ params }) {
       if (now < drainUntil) fluid.drain(drainDissip, cfg);
       acc -= FIXED; steps++; debug.steps++;
     }
+
+    if (screen === 'count') countMaintain(now, dt, steps);
 
     fluid.render({
       bloomThreshold: params.get('bloomThreshold'),
@@ -383,6 +387,39 @@ export function createInkRenderer({ params }) {
     return { cx: c.x, cy: c.y, a0: ref + Math.min(...rel) - pad, a1: ref + Math.max(...rel) + pad, R: Math.hypot(l.c.width, l.c.height) };
   }
   function easeOut(t) { return 1 - Math.pow(1 - t, 2); }
+  // The breathing anchor: a slow scale swell and a slow two-axis drift of the
+  // whole figure. Ink follows through the fluid because the trickle top-up
+  // lands at the moving anchor while the old position fades.
+  function countRect(now) {
+    const g = countGeom;
+    const T = Math.max(0.5, params.get('countBreatheS')) * 1000;
+    const amp = params.get('countBreathe') / 100;
+    const ph = (now / T) * Math.PI * 2;
+    const s = 1 + amp * Math.sin(ph);
+    const dx = amp * g.w * 0.6 * Math.sin(ph * 0.61 + 1.3);
+    const dy = amp * g.h * 0.6 * Math.sin(ph * 0.43 + 2.9);
+    const w = g.w * s, h = g.h * s;
+    return fluid.rectFromClient(g.cx - w / 2 + dx, g.cy - h / 2 + dy, w, h);
+  }
+  // Per-frame keep-alive: trickle back exactly the ink the fade removed since
+  // the last trickle, in doses large enough to survive byte textures, and
+  // advance any transitions. Runs after the sim steps of this frame.
+  function countMaintain(now, dt, steps) {
+    if (!countCurrent || !countGeom) return;
+    const ink = params.get('countInk');
+    const rect = countRect(now);
+    if (countAnims.length) stepCountAnims(now, dt, rect);
+    countOwed += ink * (1 - Math.pow(params.get('countFade'), steps));
+    if (countOwed < 0.006) return;
+    const rgb = coreRgb().map(c => c * 3);
+    fluid.stamp(countCurrent.ring.c, rect, rgb, countOwed);
+    countCurrent.digits.forEach((l, i) => {
+      const a = countAnims.find(x => x.place === i);
+      if (!a) fluid.stamp(l.c, rect, rgb, countOwed);
+      else if (a.shared) fluid.stamp(a.shared.c, rect, rgb, countOwed);
+    });
+    countOwed = 0;
+  }
   // The new layer clipped to the wedge slice [ta, tb] of its angular span.
   function wedgeSlice(l, wg, ta, tb) {
     if (!countScratch) countScratch = document.createElement('canvas');
@@ -400,9 +437,10 @@ export function createInkRenderer({ params }) {
     ctx.restore();
     return s;
   }
-  function stepCountAnims(now, dt) {
+  function stepCountAnims(now, dt, rect) {
     const keep = [];
     for (const a of countAnims) {
+      a.rect = rect;
       const t = Math.min(1, (now - a.start) / Math.max(1, a.periodMs));
       const f0 = easeOut(a.lastT), f1 = easeOut(t);
       if (f1 > f0) {
@@ -420,6 +458,7 @@ export function createInkRenderer({ params }) {
     countAnims = keep;
   }
   function finishCountAnim(a) {
+    if (!a.rect) a.rect = countRect(performance.now());
     if (a.lastT < 1) {
       const f0 = easeOut(a.lastT);
       if (a.wedge) fluid.stamp(wedgeSlice(a.neu, a.wedge, f0, 1), a.rect, a.rgb, a.ink, { version: ++countVersion });
@@ -504,7 +543,7 @@ export function createInkRenderer({ params }) {
 
     startRun({ mode, totalMs }) {
       run = { mode, timeRemainingMs: totalMs, totalMs };
-      countShown = null; countGeom = null; countAnims = [];
+      countShown = null; countGeom = null; countAnims = []; countCurrent = null; countOwed = 0;
       lastBitCount = 0;
       els.choices.replaceChildren();
       painter.cancel();
@@ -536,9 +575,6 @@ export function createInkRenderer({ params }) {
       const token = ++countToken;
       const rgb = coreRgb().map(c => c * 3);
       const ink = params.get('countInk');
-      // What the fade removes over one period, so a top-up restores exactly that.
-      const steps = Math.max(1, Math.round(periodMs / 1000 * 60));
-      const topUp = ink * (1 - Math.pow(params.get('countFade'), steps));
 
       // One SVG per distinct digit set; layers are cut from it by hiding
       // the other groups. A fixed seed + per-lobe rng streams make a digit's
@@ -595,17 +631,19 @@ export function createInkRenderer({ params }) {
           const k = (short * params.get('countSize')) / Math.max(bb.w, bb.h);
           const w = ring.c.width * k, h = ring.c.height * k;
           const cx = stage.left + stage.width / 2, cy = stage.top + stage.height / 2;
-          countGeom = { size, rect: fluid.rectFromClient(cx - (bb.x + bb.w / 2) * k, cy - (bb.y + bb.h / 2) * k, w, h) };
+          // Client-space centre of the raster and its size; the breathing
+          // anchor scales and drifts this each frame (see countRect()).
+          countGeom = { size, cx: cx - (bb.x + bb.w / 2 - ring.c.width / 2) * k, cy: cy - (bb.y + bb.h / 2 - ring.c.height / 2) * k, w, h };
         }
-        const { rect } = countGeom;
+        const rect = countRect(performance.now());
         const reach = params.get('countErase') * COUNT_RASTER;
+        countCurrent = { ring, digits: news.slice() };
         if (!prev) {
           fluid.stamp(ring.c, rect, rgb, ink);
           for (const l of news) fluid.stamp(l.c, rect, rgb, ink);
         } else {
-          fluid.stamp(ring.c, rect, rgb, topUp);
           digits.forEach((d, i) => {
-            if (d === prev[i]) { fluid.stamp(news[i].c, rect, rgb, topUp); return; }
+            if (d === prev[i]) return;
             // Hand the change to the frame loop: sweep the new ink in and
             // fade the old ink out over `periodMs`. A transition already
             // running on this place is finished first.
@@ -615,8 +653,10 @@ export function createInkRenderer({ params }) {
             // neither faded (old − new) nor re-inked (new − old).
             const erase = olds[i] ? dilate(olds[i].c, reach, ring.c, news[i].c) : null;
             const fresh = olds[i] ? { ...news[i], c: dilate(news[i].c, 0, olds[i].c) } : news[i];
+            // Marks both digits share keep being topped up meanwhile.
+            const shared = olds[i] ? { ...news[i], c: dilate(news[i].c, 0, fresh.c) } : null;
             countAnims.push({
-              place: i, neu: fresh, erase, rect, rgb, ink,
+              place: i, neu: fresh, erase, shared, rgb, ink,
               wedge: params.get('countReveal') >= 1 ? wedgeFor(news[i]) : null,
               start: performance.now(), periodMs, lastT: 0,
             });
@@ -635,7 +675,7 @@ export function createInkRenderer({ params }) {
         els.countStage.replaceChildren(svg);
         startDrain(200, 0.8);
         painter.splashSvg(svg, coreRgb(), { amount: ink * 0.6, radiusPx: target * 0.012, spacingPx: 6 });
-        countShown = null; countAnims = [];
+        countShown = null; countAnims = []; countCurrent = null;
       });
     },
 
