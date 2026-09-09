@@ -3,7 +3,7 @@
 Newest at top. Alternatives we chose *not* to build yet live here so they
 can be picked up later without re-deriving them.
 
-## 2026-09-09 — + count mode
+## 2026-09-09 — + count modes (right: logogram, left: Cistercian)
 
 Spec: `docs/superpowers/specs/2026-09-09-count-mode-design.md`.
 
@@ -12,6 +12,12 @@ logogram in ink that counts up from zero once a second. Rules side is a
 `counter` flag in `MODE_CONFIG` and a `COUNT` phase; the renderer stamps a
 rasterised SVG into the dye in one GL pass (`FRAG_STAMP`) and drains the
 fluid for the last 300 ms of every second. Hold 1 s to leave.
+
+Later the same day: the left `+` counts with the Cistercian growth-front
+painter instead, one glyph per second, dissolving to the floor in 0.9 s with
+the water never frozen so stems do not stack; and the logogram counter grew
+per-digit transitions (sweep in / fade out), a trickle keep-alive and a
+breathing anchor.
 
 ### Alternatives kept for later
 

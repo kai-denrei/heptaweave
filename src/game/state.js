@@ -28,7 +28,8 @@ export const PHASE = Object.freeze({
 export const MODE = Object.freeze({
   TIMED: 'TIMED', // ⧖
   ENDLESS: 'ENDLESS', // ∞
-  COUNT: 'COUNT', // +
+  COUNT: 'COUNT', // + (right): heptaweave logogram
+  COUNT_C: 'COUNT_C', // + (left): Cistercian glyph
 });
 
 export function createStore(initial) {

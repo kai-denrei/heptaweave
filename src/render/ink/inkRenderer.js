@@ -7,6 +7,9 @@
 //      stage light dims across the run; a wrong answer is a drain pulse.
 //   ∞  dissipation is derived from the tier's revealMs; "stays" tiers drift
 //      without fading and are re-inked periodically.
+//   +⟵ (COUNT_C) the ∞ prompt's Cistercian, one per second: traced fast,
+//      never frozen, dissolved to the floor inside `countCLife` so stems do
+//      not pile up. Uses the growth-front painter with a per-glyph tempo.
 //   +  no clock: one large logogram stamped in layers (ring + one per
 //      digit). When the value changes, the new digit's ink sweeps in along
 //      the ring over the whole period (a growth front, like the Cistercian)
@@ -66,6 +69,7 @@ export function createInkRenderer({ params }) {
   let run = { mode: null, timeRemainingMs: 0, totalMs: 0 };
   let wispAcc = 0;
   let countToken = 0;
+  let countKind = null;      // 'heptaweave' | 'cistercian' while on the count screen
   // + mode layer cache: key → Promise<canvas>; geometry shared by all layers.
   let countLayers = new Map();
   let countGeom = null;      // { rect, size }
@@ -94,6 +98,11 @@ export function createInkRenderer({ params }) {
   // Prompt box (where the glyph is painted; also the choice layout's centre)
   // --------------------------------------------------------------------------
   function promptBox() {
+    if (screen === 'count' && els.countStage) {
+      const st = els.countStage.getBoundingClientRect();
+      const size = Math.min(st.width, st.height) * params.get('countCSize');
+      return { x: st.left + (st.width - size) / 2, y: st.top + (st.height - size) / 2, w: size, h: size };
+    }
     const mid = els.playMid.getBoundingClientRect();
     const size = Math.min(mid.width, mid.height) * params.get('promptSize');
     return {
@@ -136,14 +145,20 @@ export function createInkRenderer({ params }) {
   function stepConfig(now) {
     const cfg = baseFlow();
     const diffuse = params.get('diffuse');
-    if (screen === 'count') {
+    if (screen === 'count' && countKind === 'cistercian') {
+      // Everything on the water shares one clock; the current keeps running
+      // while the next glyph is traced so the last one goes on dissolving.
+      cfg.dissip = glyph ? glyph.dissip : params.get('idleDissip');
+      cfg.flowStr = params.get('flowStrength') * params.get('countCFlow');
+      cfg.diffuse = diffuse;
+    } else if (screen === 'count') {
       cfg.dissip = params.get('countFade');
       cfg.flowStr = params.get('flowStrength') * params.get('countDrift');
       cfg.diffuse = 0;
     } else if (phase === 'paint' || phase === 'hold') {
       cfg.dissip = 1; cfg.flowStr = 0; cfg.diffuse = 0;
     } else if (phase === 'ramp') {
-      const t = easeInOut(Math.min(1, (now - phaseStart) / Math.max(1, params.get('rampMs'))));
+      const t = easeInOut(Math.min(1, (now - phaseStart) / Math.max(1, glyph?.tempo?.rampMs ?? params.get('rampMs'))));
       cfg.dissip = 1 + (targetDissip() - 1) * t;
       cfg.flowStr = targetFlowStr() * t;
       cfg.diffuse = diffuse * t;
@@ -183,9 +198,9 @@ export function createInkRenderer({ params }) {
       const { done } = painter.update(now);
       if (done) { phase = 'hold'; phaseStart = now; }
     } else if (phase === 'hold') {
-      if (now - phaseStart >= params.get('holdMs')) { phase = 'ramp'; phaseStart = now; lastReink = now; }
+      if (now - phaseStart >= (glyph?.tempo?.holdMs ?? params.get('holdMs'))) { phase = 'ramp'; phaseStart = now; lastReink = now; }
     } else if (phase === 'ramp') {
-      if (now - phaseStart >= params.get('rampMs')) { phase = 'flow'; phaseStart = now; }
+      if (now - phaseStart >= (glyph?.tempo?.rampMs ?? params.get('rampMs'))) { phase = 'flow'; phaseStart = now; }
     } else if (phase === 'flow' && glyph && glyph.stays) {
       const every = params.get('staysReinkMs');
       if (every > 0 && now - lastReink >= every) { painter.reink(0.2); lastReink = now; }
@@ -354,6 +369,26 @@ export function createInkRenderer({ params }) {
     }
     glyph = { number, seed, mode, revealMs, dissip, stays, seconds };
     painter.begin({ number, box: promptBox(), seed, rgb: coreRgb() });
+    phase = 'paint';
+    phaseStart = performance.now();
+  }
+
+  // COUNT_C: trace the glyph fast and let it dissolve to the floor within
+  // `countCLife` seconds. Same painter and phases as the ∞ prompt, but with a
+  // per-glyph tempo and no freeze, so the previous glyph keeps dissolving
+  // under the new one and the stems never stack into a bright bar.
+  function paintCountGlyph(number, periodMs) {
+    const life = params.get('countCLife');
+    const dissip = dissipFor(life, params.get('dissolveFloor'));
+    glyph = {
+      number, seed: number + 1, mode: 'COUNT_C', revealMs: life * 1000, dissip, stays: false, seconds: life,
+      tempo: { holdMs: 0, rampMs: params.get('countCRamp') },
+    };
+    painter.begin({
+      number, box: promptBox(), seed: number + 1, rgb: coreRgb(),
+      traceMs: Math.min(params.get('countCTrace'), periodMs * 0.9),
+      inkScale: params.get('countCInk'),
+    });
     phase = 'paint';
     phaseStart = performance.now();
   }
@@ -543,7 +578,7 @@ export function createInkRenderer({ params }) {
 
     startRun({ mode, totalMs }) {
       run = { mode, timeRemainingMs: totalMs, totalMs };
-      countShown = null; countGeom = null; countAnims = []; countCurrent = null; countOwed = 0;
+      countShown = null; countGeom = null; countAnims = []; countCurrent = null; countOwed = 0; countKind = null;
       lastBitCount = 0;
       els.choices.replaceChildren();
       painter.cancel();
@@ -565,9 +600,11 @@ export function createInkRenderer({ params }) {
     // The + mode. The logogram is rasterised to a canvas and stamped into
     // the dye in one pass (its paths are far too long to splat). The raster
     // is async (SVG → Image); a later value cancels an earlier one in flight.
-    renderCount({ value, periodMs = 1000 }) {
+    renderCount({ value, periodMs = 1000, glyph: kind = 'heptaweave' }) {
       if (!els.countStage || !fluid.ok) return;
       const n = Math.max(0, value | 0) % 10000;
+      countKind = kind;
+      if (kind === 'cistercian') { paintCountGlyph(n, periodMs); return; }
       const digits = [Math.floor(n / 1000) % 10, Math.floor(n / 100) % 10, Math.floor(n / 10) % 10, n % 10];
       const stage = els.countStage.getBoundingClientRect();
       const short = Math.min(stage.width, stage.height);

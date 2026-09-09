@@ -73,6 +73,14 @@ export const SCHEMA = [
   ['count', 'countErase',     'erase reach (px)',     0,     12,   0.5,   3],
   ['count', 'countReveal',    'new digit 0=dims 1=grows', 0, 1,    1,     1],
 
+  // ---- countC: the left +, a Cistercian glyph per second -----------------
+  ['countC', 'countCSize',    'glyph size',           0.25,  0.9,  0.01,  0.7],
+  ['countC', 'countCTrace',   'grow time (ms)',       100,   900,  10,    320],
+  ['countC', 'countCRamp',    'ramp to flow (ms)',    0,     600,  10,    150],
+  ['countC', 'countCLife',    'gone after (s)',       0.3,   3,    0.05,  0.9],
+  ['countC', 'countCFlow',    'current ×',            0,     3,    0.05,  1.2],
+  ['countC', 'countCInk',     'stroke ink ×',         0.2,   1.5,  0.05,  0.8],
+
   // ---- rules: test-mode overrides (−1 / 0 = use the table) --------------
   ['rules', 'pinTier',        'pin tier (−1 = off)',  -1,    9,    1,     -1],
   ['rules', 'choiceCount',    'choices (0 = table)',  0,     7,    1,     0],

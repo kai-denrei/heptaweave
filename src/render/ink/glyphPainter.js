@@ -100,7 +100,7 @@ export function createPainter({ fluid, params }) {
 
   function emitSample(p, rgb, amountScale) {
     const rect = fluid.canvasHeightCss();
-    const amount = params.get('strokeAmount') * amountScale;
+    const amount = params.get('strokeAmount') * amountScale * (current?.inkScale ?? 1);
     const color = [rgb[0] * COLOR_GAIN, rgb[1] * COLOR_GAIN, rgb[2] * COLOR_GAIN];
     const { u, v } = fluid.uvFromClient(p.x, p.y);
     fluid.splat(u, v, color, (radiusPx * p.w) / rect, amount);
@@ -108,8 +108,8 @@ export function createPainter({ fluid, params }) {
 
   return {
     /** Start growing a glyph. Nothing is splatted until `update()`. */
-    begin({ number, box, seed = 1, rgb }) {
-      current = { number, box, seed, rgb };
+    begin({ number, box, seed = 1, rgb, traceMs = null, inkScale = 1 }) {
+      current = { number, box, seed, rgb, traceMs, inkScale };
       samples = buildSamples({ number, box, seed });
       emitted = 0;
       startMs = null;
@@ -120,7 +120,7 @@ export function createPainter({ fluid, params }) {
     update(nowMs) {
       if (done || !current) return { done: true, progress: 1 };
       if (startMs === null) startMs = nowMs;
-      const traceMs = Math.max(1, params.get('traceMs'));
+      const traceMs = Math.max(1, current.traceMs ?? params.get('traceMs'));
       const prog = Math.min(1, (nowMs - startMs) / traceMs);
       const r = maxD * prog;
       while (emitted < samples.length && samples[emitted].d <= r + 1e-6) {

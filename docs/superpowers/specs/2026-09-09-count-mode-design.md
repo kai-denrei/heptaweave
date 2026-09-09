@@ -63,6 +63,27 @@ stable." Answered in-session: one per second (stopwatch), 1 s hold to leave.
 `countSize` (ink bounding box as a fraction of the short side, measured from the raster's alpha; 0.8), `countInk` (0.22), `countDrift`,
 `countFade`, `countErase`, `countReveal`, `countBreathe`, `countBreatheS`. All live in `#admin`.
 
+## Left +: the Cistercian counter (`MODE.COUNT_C`)
+
+Operator, 2026-09-09: "another + on the left, that one does a count up, but
+with the cistercian glyph from the infinite section … with the settings once
+you already had 16 or so correct and it fades quickly, we do not want too
+much overlap, especially of the stems … elegant ink fading and new one
+applied."
+
+- `MODE_CONFIG` entries carry `glyph: 'heptaweave' | 'cistercian'`; main.js
+  passes it through `renderCount`. Same counter loop, same hold-to-leave.
+- The renderer paints with the growth-front painter, as the ∞ prompt does,
+  but with a per-glyph tempo: `traceMs = countCTrace` (320), hold 0, ramp
+  `countCRamp` (150), dissipation from `countCLife` (0.9 s, i.e. faster than
+  the score-16 tier's 5 s so a glyph is a ghost before the next lands),
+  current `flowStrength × countCFlow`, stroke ink × `countCInk`. The water is
+  **never frozen** on this screen: the previous glyph keeps dissolving while
+  the next is traced, which is what keeps consecutive stems from stacking.
+- `promptBox()` measures the count stage at `countCSize` (0.7) on the count
+  screen, so the same painter lands in the right place.
+- Params group `countC`: size, grow time, ramp, gone-after, current ×, ink ×.
+
 ## Verification
 
 `node scripts/ink-cdp-shots.mjs <out> COUNT "" 400,1400,1850,2400,6300`:
