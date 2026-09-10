@@ -27,10 +27,12 @@
   h1 { font: 400 56px/1.05 var(--serif); letter-spacing: 0.01em; margin: 0 0 8px; text-wrap: balance; }
   h2 { font: 400 30px/1.15 var(--serif); margin: 56px 0 12px; text-wrap: balance; }
   .eyebrow { font: 400 12px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 18px; }
-  p { max-width: 62ch; margin: 0 0 14px; }
-  p.lede { font: 400 22px/1.4 var(--serif); max-width: 40ch; color: var(--ink); }
+  p { max-width: min(62ch, 100%); margin: 0 0 14px; }
+  p.lede { font: 400 22px/1.4 var(--serif); max-width: min(40ch, 100%); color: var(--ink); }
   em { font-style: italic; }
   .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; margin: 24px 0 8px; }
+  .hero > *, .places > * { min-width: 0; }
+  .page { overflow-x: hidden; }
   .hero svg { width: 100%; height: auto; display: block; }
   .digits { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 16px; }
   .digits figure { margin: 0; background: var(--floor-2); border-radius: 6px; padding: 10px 8px 8px; text-align: center; }
@@ -42,11 +44,12 @@
   .places figure { margin: 0; }
   .places figcaption { font: 400 14px/1.4 var(--sans); color: var(--ink-dim); margin-top: 8px; }
   .places figcaption b { color: var(--ink); font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
   table { border-collapse: collapse; font-size: 15px; margin: 8px 0 0; max-width: 62ch; }
   td, th { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--hair); vertical-align: top; }
   th { font: 400 12px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); }
   td:first-child { font-family: var(--mono); white-space: nowrap; color: var(--ink); }
-  .questions { list-style: none; padding: 0; margin: 0; max-width: 62ch; }
+  .questions { list-style: none; padding: 0; margin: 0; max-width: min(62ch, 100%); }
   .questions li { padding: 10px 0; border-bottom: 1px solid var(--hair); }
   .questions li b { font-weight: 600; }
   .glowline { stroke: var(--ink); stroke-width: 6; fill: none; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 2.5px rgba(157, 176, 255, 0.6)); }
@@ -92,7 +95,7 @@
 
   <h2>How it is written in ink</h2>
   <p>Same growth front as the Cistercian prompt, with the ring already on the water. The front starts where each stem meets the ring and runs outward: stem first, then the digit figure, all four places at once. Digit 6 keeps its own seed, exactly as it does today. In the counter, a changed digit unpins and dissolves while the new one grows from the ring; the ring itself is never redrawn.</p>
-  <table>
+  <div class="table-wrap"><table>
     <tr><th>digit</th><th>figure in the stem frame</th><th>Cistercian source</th></tr>
     <tr><td>1</td><td>bar at the tip, out to w</td><td>(1,0)→(2,0)</td></tr>
     <tr><td>2</td><td>bar at the foot, out to w</td><td>(1,1)→(2,1)</td></tr>
@@ -103,7 +106,7 @@
     <tr><td>7</td><td>tip bar then down the outer edge: a bowl opening toward the ring</td><td>(1,0)→(2,0)→(2,1)</td></tr>
     <tr><td>8</td><td>foot bar then up the outer edge: a bowl opening outward</td><td>(1,1)→(2,1)→(2,0)</td></tr>
     <tr><td>9</td><td>foot bar, outer edge, tip bar: a square closed by the stem</td><td>(1,1)→(2,1)→(2,0)→(1,0)</td></tr>
-  </table>
+  </table></div>
 
   <h2>To settle before building</h2>
   <ul class="questions">
