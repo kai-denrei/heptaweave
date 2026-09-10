@@ -44,7 +44,9 @@ export const MODE_CONFIG = {
     counter: true,
     glyph: 'cistercian',
     periodMs: 1000,
-    wrapAt: 10000,
+    // Eight places: the ring-stave numeral holds 8 slots. The plain
+    // Cistercian draws the value mod 10000.
+    wrapAt: 100_000_000,
     deepLink: 'countup1',
   },
 };

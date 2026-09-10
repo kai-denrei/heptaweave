@@ -3,6 +3,12 @@
 Newest at top. Alternatives we chose *not* to build yet live here so they
 can be picked up later without re-deriving them.
 
+## 2026-09-10 — ring-stave numeral, rev 3
+
+Opening at the bottom. Thin end bottom-right = units, thick end bottom-left =
+highest place; the brush swells along the ring (per-point width factors, new
+in the growth painter). Left counter counts to 10^8 − 1.
+
 ## 2026-09-10 — ring-stave numeral, rev 2
 
 No stems: figures stand on the ring. Eight slots (up to sixteen) read from the

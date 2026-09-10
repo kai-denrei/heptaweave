@@ -8,27 +8,32 @@
 // tip and foot points, 3 and 4 diagonals, 5 a triangle closed by the ring,
 // 6 a detached bar parallel to the ring, 7 and 8 bowls, 9 a box on the ring.
 //
-// Slots: `slots` evenly spaced positions (8 by default, up to 16). Numbers
-// are read from the right: the units sit at the upper-right and each higher
-// place is the next slot counter-clockwise, so a 2-digit number occupies two
-// slots and a 5-digit number five. Adjacent slots mirror their tip/foot
-// direction, as Cistercian quadrant pairs do. Leading zeros are not drawn;
-// 0 is the bare ring.
+// The ring opens at the bottom, like an enso: its THIN end is at the bottom
+// right and its THICK end at the bottom left. Reading starts at the thin end:
+// the units sit there, and each higher place is the next slot along the ring
+// — up the right side, over the top, down the left — so the highest place
+// sits by the thick end. `slots` positions share the arc (8 by default, up to
+// 16); a number occupies only as many as it has digits. Adjacent slots
+// mirror their tip/foot direction, as Cistercian quadrant pairs do. Leading
+// zeros are not drawn; 0 is the bare ring.
 //
 // Output has the same shape as growthFront.js — distance-tagged polylines —
-// so the ink painter grows it with the same front: from the ring's midpoint
-// (opposite its opening) both ways round the ring, and out into each figure
-// as the front passes its foot on the ring. Digit 6, which touches the ring
-// nowhere, seeds at its own midpoint a beat after the front passes its slot.
+// so the ink painter grows it with the same front. The front starts at the
+// thin end and runs the one way round to the thick end, out into each figure
+// as it passes the figure's foot on the ring; points carry `wf`, a width
+// factor, so the ring swells from thin to thick under the brush. Digit 6,
+// which touches the ring nowhere, seeds at its own midpoint a beat after the
+// front passes its slot.
 
 import { UNIT_DIGIT_PATHS } from './digitMap.js';
 
-const RING_SAMPLES = 96;
-const GAP_CENTRE = -Math.PI * 0.62;   // the opening, upper-left
-const GAP_WIDTH = Math.PI * 0.10;
-const UNITS_ANGLE = -Math.PI / 4;     // slot 0, upper-right
+const RING_SAMPLES = 120;
+const GAP_CENTRE = Math.PI / 2;       // the opening, at the bottom
+const GAP_WIDTH = Math.PI * 0.16;     // ~29°: thin end bottom-right, thick end bottom-left
 const FIGURE_H = 0.42;                // tip↔foot arc length, of R
 const FIGURE_W = 0.6;                 // radial reach, of FIGURE_H
+const WF_THIN = 0.5, WF_THICK = 1.3;  // brush width factors at the two ends
+const WF_FIGURE = 0.85;
 
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 function arcLengths(points) {
@@ -43,6 +48,11 @@ function withDistance(points, seeds) {
     for (const seed of seeds) d = Math.min(d, seed.d0 + Math.abs(s[i] - s[seed.index]));
     return { x: p.x, y: p.y, d };
   });
+}
+
+/** Angles of the ring's two ends (screen radians): units start at `thin`. */
+export function ringEnds() {
+  return { thin: GAP_CENTRE - GAP_WIDTH / 2, thick: GAP_CENTRE + GAP_WIDTH / 2 };
 }
 
 /** Digits of `n`, least significant first, no leading zeros ([0] for 0). */
@@ -72,40 +82,38 @@ export function ringStaveGrowthPx({ number, size, padFrac = 0.10, slots = 8 }) {
   const H = R * H_OF_R, W = R * W_OF_R;
   const paths = [];
 
-  // Ring: an arc from one side of the opening round to the other, rooted
-  // at its midpoint so the front runs both ways.
-  const a0 = GAP_CENTRE + GAP_WIDTH / 2;
-  const a1 = GAP_CENTRE + Math.PI * 2 - GAP_WIDTH / 2;
-  const aMid = (a0 + a1) / 2;
+  // Ring: one arc from the thin end (bottom right) the long way round to the
+  // thick end (bottom left) — decreasing angle in screen space: up the right
+  // side, over the top, down the left. Rooted at the thin end.
+  const aThin = GAP_CENTRE - GAP_WIDTH / 2;
+  const span = Math.PI * 2 - GAP_WIDTH;
+  const angleAt = (t) => aThin - span * t;               // t ∈ [0,1], thin → thick
   const ringPt = (a, r = R) => ({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
-  const half = RING_SAMPLES / 2;
-  const armA = [], armB = [];
-  for (let i = 0; i <= half; i++) {
-    armA.push(ringPt(aMid + (a1 - aMid) * i / half));
-    armB.push(ringPt(aMid - (aMid - a0) * i / half));
-  }
-  for (const arm of [armA, armB]) {
-    const s = arcLengths(arm);
-    paths.push({ points: arm.map((p, i) => ({ ...p, d: s[i] })), place: 'stave', digit: null, seeded: false });
-  }
-  const ringD = (a) => {
-    let rel = a - aMid;
-    while (rel > Math.PI) rel -= Math.PI * 2;
-    while (rel < -Math.PI) rel += Math.PI * 2;
-    return Math.abs(rel) * R;
+  const ringD = (a) => {                                 // arc distance from the thin end
+    let rel = aThin - a;
+    while (rel < 0) rel += Math.PI * 2;
+    while (rel > Math.PI * 2) rel -= Math.PI * 2;
+    return Math.min(rel, span) * R;
   };
+  const arc = [];
+  for (let i = 0; i <= RING_SAMPLES; i++) {
+    const t = i / RING_SAMPLES;
+    const e = t * t * (3 - 2 * t);                        // ease: swells late
+    arc.push({ ...ringPt(angleAt(t)), d: span * R * t, wf: WF_THIN + (WF_THICK - WF_THIN) * e });
+  }
+  paths.push({ points: arc, place: 'stave', digit: null, seeded: false });
 
   const digits = placeDigits(number);
-  const step = (Math.PI * 2) / N;
-  const dTheta = H / R;                 // tip↔foot as an angle
+  const step = span / N;                                  // slots share the arc
+  const dTheta = H / R;                                   // tip↔foot as an angle
   digits.forEach((digit, k) => {
     if (k >= N) return;
-    const ac = UNITS_ANGLE - k * step;  // counter-clockwise per place
-    const dir = (k % 2 === 0) ? 1 : -1; // adjacent slots mirror tip/foot
+    const ac = aThin - (k + 0.5) * step;                  // units by the thin end
+    const dir = (k % 2 === 0) ? 1 : -1;                   // adjacent slots mirror tip/foot
     const aTip = ac - dir * dTheta / 2;
     // Cistercian unit-quadrant coords: x 1..2 (stave → out), y 0..1 (tip →
     // foot). Angle runs tip → foot along the ring; radius grows outward.
-    const map = (p) => ringPt(aTip + dir * p.y * dTheta, R + (p.x - 1) * W);
+    const map = (p) => ({ ...ringPt(aTip + dir * p.y * dTheta, R + (p.x - 1) * W), wf: WF_FIGURE });
     for (const raw of UNIT_DIGIT_PATHS[digit] ?? []) {
       const pts = raw.map(map);
       const seeds = [];
@@ -114,13 +122,13 @@ export function ringStaveGrowthPx({ number, size, padFrac = 0.10, slots = 8 }) {
       });
       const place = `slot${k}`;
       if (seeds.length) {
-        paths.push({ points: withDistance(pts, seeds), place, digit, seeded: false });
+        paths.push({ points: withDistance(pts, seeds).map((q, i) => ({ ...q, wf: pts[i].wf })), place, digit, seeded: false });
         continue;
       }
       // Detached (digit 6): grow from the bar's midpoint a beat after the
       // front passes the slot.
       const last = pts.length - 1;
-      const mid = { x: (pts[0].x + pts[last].x) / 2, y: (pts[0].y + pts[last].y) / 2 };
+      const mid = { x: (pts[0].x + pts[last].x) / 2, y: (pts[0].y + pts[last].y) / 2, wf: WF_FIGURE };
       const d0 = ringD(ac) + W;
       const h = dist(pts[0], pts[last]) / 2;
       paths.push({ points: [{ ...mid, d: d0 }, { ...pts[0], d: d0 + h }], place, digit, seeded: true });

@@ -93,7 +93,10 @@ export function createPainter({ fluid, params }) {
           const y = lerp(a.y, b.y, t) + ny * wob;
           const d = lerp(a.d, b.d, t);
           const toEnd = lastFree ? (total - s) : Infinity;
-          const w = lerp(1, 0.35 + 0.65 * smoothstep(0, taperLen, toEnd), taper);
+          // Builders may carry a width factor per point (the ring-stave's
+          // enso swells from its thin end to its thick end).
+          const wf = lerp(a.wf ?? 1, b.wf ?? 1, t);
+          const w = lerp(1, 0.35 + 0.65 * smoothstep(0, taperLen, toEnd), taper) * wf;
           out.push({ x: box.x + x, y: box.y + y, d, w });
         }
       }

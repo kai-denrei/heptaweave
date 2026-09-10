@@ -138,9 +138,14 @@ the same ink slightly hovering." `inverted` and `surface` default to 1.
   builds the glyph as distance-tagged polylines. **Rev 2 (operator: "we just
   get rid of the stem")**: no stems — the ring is the stave, figures stand
   on it (along the ring = up the stave, radial = out). `ringSlots` positions
-  (8 default, 4–16); numbers read from the right: units at the upper-right,
-  each higher place the next slot counter-clockwise, only as many slots as
-  digits, 0 = bare ring. Adjacent slots mirror tip/foot. Digit 6 seeds at
+  (8 default, 4–16) share the arc. **Rev 3**: the ring opens at the bottom
+  like an enso — thin end bottom-right, thick end bottom-left (points carry a
+  width factor `wf`, 0.5 → 1.3, that the painter multiplies into the brush).
+  Reading starts at the thin end: units there, each higher place the next
+  slot up the right side, over the top, down the left; the highest place by
+  the thick end. Only as many slots as digits; 0 = bare ring. The growth
+  front starts at the thin end. The left counter wraps at 10^8 (the plain
+  Cistercian shows it mod 10000). Adjacent slots mirror tip/foot. Digit 6 seeds at
   its midpoint a beat after the front passes its slot. Spec page:
   `docs/ring-stave.html`. The painter takes a
   `figure` and both the ∞/⧖ prompt and the left counter draw it when the

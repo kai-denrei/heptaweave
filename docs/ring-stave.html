@@ -53,6 +53,7 @@
   .questions li { padding: 10px 0; border-bottom: 1px solid var(--hair); }
   .questions li b { font-weight: 600; }
   .glowline { stroke: var(--ink); stroke-width: 6; fill: none; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 2.5px rgba(157, 176, 255, 0.6)); }
+  .glowline.ribbon { fill: var(--ink); stroke: none; }
   .faint { stroke: var(--ink-dim); stroke-width: 1.2; fill: none; stroke-dasharray: 3 6; opacity: 0.7; }
   .lbl { font: 400 11px var(--mono); fill: var(--ink-dim); letter-spacing: 0.08em; }
   @media (max-width: 700px) {
@@ -65,7 +66,7 @@
 <body>
 
 <div class="page">
-  <div class="eyebrow">heptaweave · glyph spec · 2026-09-10 · rev 2: no stems, 8 slots</div>
+  <div class="eyebrow">heptaweave · glyph spec · 2026-09-10 · rev 3: no stems, opening at the bottom, 8 slots</div>
   <h1>Ring Stave Numerals</h1>
   <p class="lede">The ring is the stave. Each digit stands directly on it, and the Cistercian digit logic is unchanged: along the ring is “up the stave”, out of the ring is “out”.</p>
 
@@ -81,20 +82,20 @@
   <p>Ring frame: a digit spans two points on the ring, its tip <span style="font-family:var(--mono)">T</span> and its foot <span style="font-family:var(--mono)">F</span>, an arc of 0.42 R apart, and reaches out by <span style="font-family:var(--mono)">w</span> = 0.6 of that. Zero draws nothing: an empty slot is a bare stretch of ring.</p>
   <div class="digits" id="digits"></div>
 
-  <h2>Eight slots, read from the right</h2>
+  <h2>Eight slots, from the thin end to the thick end</h2>
   <div class="places">
     <figure>
       <svg viewBox="0 0 360 360" id="places" aria-label="place layout"></svg>
-      <figcaption><b>Where the places go.</b> Eight slots (up to sixteen), evenly spaced. The units sit at the upper-right and every higher place is the next slot counter-clockwise, so a two-digit number occupies two slots and a five-digit number reaches round to the lower-left. Adjacent slots mirror their tip and foot, as Cistercian quadrant pairs do. Shown: 7 in every slot.</figcaption>
+      <figcaption><b>Where the places go.</b> The ring opens at the bottom like an enso: its <b>thin end</b> is at the bottom right, its <b>thick end</b> at the bottom left. Reading starts at the thin end: the units sit there, and each higher place is the next slot along the ring, up the right side, over the top and down the left, so the highest place sits by the thick end. Eight slots share the arc (up to sixteen); a number uses only as many as it has digits. Adjacent slots mirror tip and foot. Shown: 7 in every slot.</figcaption>
     </figure>
     <figure>
       <svg viewBox="0 0 360 360" id="sample" aria-label="the number 1234"></svg>
-      <figcaption><b>1234.</b> Four slots: a tip bar, a foot bar, two diagonals leaning opposite ways. The empty half of the ring says the number stops there.</figcaption>
+      <figcaption><b>1234.</b> Four slots from the thin end up the right side: a tip bar, a foot bar, two diagonals leaning opposite ways. The bare left half says the number stops there.</figcaption>
     </figure>
   </div>
 
   <h2>How it is written in ink</h2>
-  <p>Same growth front as the Cistercian prompt. The front starts at the bottom of the ring, opposite its opening, and runs both ways round; as it passes a slot it runs out into that digit’s figure from the figure’s foot on the ring. Digit 6 keeps its own seed, a beat after the front passes its slot. Built: <span style="font-family:var(--mono)">src/cistercian/ringStave.js</span>, drawn wherever the growth painter draws when the lab’s ring-stave switch is on; the slot count is the lab’s <span style="font-family:var(--mono)">ring-stave slots</span>.</p>
+  <p>Same growth front as the Cistercian prompt. The front starts at the thin end and runs the one way round to the thick end, the brush swelling as it goes; as it passes a slot it runs out into that digit’s figure from the figure’s foot on the ring, so the units appear first and the highest place last. Digit 6 keeps its own seed, a beat after the front passes its slot. Built: <span style="font-family:var(--mono)">src/cistercian/ringStave.js</span>, drawn wherever the growth painter draws when the lab’s ring-stave switch is on; the slot count is the lab’s <span style="font-family:var(--mono)">ring-stave slots</span>.</p>
   <div class="table-wrap"><table>
     <tr><th>digit</th><th>figure in the ring frame</th><th>Cistercian source</th></tr>
     <tr><td>1</td><td>radial bar at the tip point, out to w</td><td>(1,0)→(2,0)</td></tr>
@@ -111,10 +112,10 @@
   <h2>Settled</h2>
   <ul class="questions">
     <li><b>No stems.</b> The ring is the stave; figures stand on it. (Operator, 2026-09-10.)</li>
-    <li><b>Slots.</b> Eight by default, room for sixteen. Numbers read from the right: units at the upper-right, higher places counter-clockwise. A number uses only as many slots as it has digits.</li>
+    <li><b>Slots.</b> Eight by default, room for sixteen, sharing the arc. Reading starts at the thin end (bottom right, units) and ends at the thick end (bottom left, highest place). A number uses only as many slots as it has digits; the left counter runs to 10<sup>8</sup> − 1.</li>
     <li><b>Outside.</b> Figures reach outward; the ring is sized so the widest figure still fits the cell.</li>
     <li><b>Mirroring.</b> Adjacent slots swap tip and foot; nothing else.</li>
-    <li><b>Opening.</b> The ring keeps its enso opening at the upper-left; the growth front starts opposite it.</li>
+    <li><b>Opening.</b> At the bottom, so both ends are in view: thin at the right, thick at the left. The growth front starts at the thin end.</li>
   </ul>
 </div>
 
@@ -160,20 +161,28 @@
     }
     return g;
   }
+  const GAP_CENTRE = Math.PI / 2, GAP_WIDTH = Math.PI * 0.16;
+  const A_THIN = GAP_CENTRE - GAP_WIDTH / 2, SPAN = Math.PI * 2 - GAP_WIDTH;
+  const angleAt = (t) => A_THIN - SPAN * t;   // thin → thick, up the right side
+  // The ring as a filled ribbon: thin at the bottom right, thick at the
+  // bottom left, with a little hand in it.
   function ring(svg, cx, cy, R, cls) {
-    // An enso-ish ring with a small opening near the top-left.
-    const a0 = -Math.PI * 0.62, a1 = a0 + Math.PI * 1.9;
-    const p = [];
-    for (let i = 0; i <= 96; i++) {
-      const a = a0 + (a1 - a0) * i / 96;
+    const n = 120, outer = [], inner = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n, a = angleAt(t);
+      const e = t * t * (3 - 2 * t);
+      const w = (2.2 + 6.5 * e) * (R / 96);
       const r = R * (1 + 0.012 * Math.sin(a * 3 + 0.7) + 0.008 * Math.sin(a * 7));
-      p.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+      outer.push([cx + Math.cos(a) * (r + w / 2), cy + Math.sin(a) * (r + w / 2)]);
+      inner.push([cx + Math.cos(a) * (r - w / 2), cy + Math.sin(a) * (r - w / 2)]);
     }
-    el('path', { d: 'M' + p.map(q => q.map(v => v.toFixed(1)).join(' ')).join(' L'), class: cls }, svg);
+    const pts = outer.concat(inner.reverse());
+    const d = 'M' + pts.map(q => q.map(v => v.toFixed(1)).join(' ')).join(' L') + ' Z';
+    el('path', { d, class: cls + ' ribbon' }, svg);
   }
-  // Slots: units at the upper-right, higher places counter-clockwise.
-  const SLOTS = 8, UNITS_ANGLE = -Math.PI / 4;
-  const slotAngle = (k) => UNITS_ANGLE - k * (Math.PI * 2 / SLOTS);
+  // Slots share the arc from the thin end (units) to the thick end.
+  const SLOTS = 8;
+  const slotAngle = (k) => A_THIN - (k + 0.5) * (SPAN / SLOTS);
   const slotDir = (k) => (k % 2 === 0 ? 1 : -1);
   function placeDigits(n) { let v = Math.max(0, Math.floor(n)); const out = []; do { out.push(v % 10); v = Math.floor(v / 10); } while (v > 0); return out; }
   function numeral(svg, n, cx, cy, R) {
@@ -207,7 +216,7 @@
   // Slot layout: 7 in every slot, labelled.
   const pl = document.getElementById('places');
   ring(pl, 180, 180, 96, 'glowline');
-  const names8 = ['units', 'tens', 'hundreds', 'thousands', '10⁴', '10⁵', '10⁶', '10⁷'];
+  const names8 = ['units · thin end', 'tens', 'hundreds', 'thousands', '10⁴', '10⁵', '10⁶', '10⁷ · thick end'];
   for (let k = 0; k < SLOTS; k++) {
     figure(pl, 180, 180, 96, slotAngle(k), 7, slotDir(k), 'glowline');
     const a = slotAngle(k), lx = 180 + Math.cos(a) * 158, ly = 180 + Math.sin(a) * 158;
