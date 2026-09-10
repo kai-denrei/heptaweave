@@ -55,6 +55,7 @@ Implementation details, file-level conventions, build/test commands, dev-server.
 <!-- APPEND ONLY. Never delete. -->
 | Date | What was tried | Why it failed / was rejected |
 |---|---|---|
+| 2026-09-10 | SVG `<filter>` with default objectBoundingBox region for a glow on the spec page. | Any straight axis-aligned stroke has a zero-area bbox, so the filter region collapsed and stems and bars vanished while diagonals survived. CSS `drop-shadow` on the element has no such region. |
 | 2026-09-09 | Pushed two module changes (one-trait, count mode) without running `scripts/bust.sh` or bumping `CACHE_VERSION`. | Operator's phone got the new `index.html` (network-first) with the OLD modules (stale-while-revalidate keyed by `?v=`), so `showScreen('count')` hid every screen and `renderCount` did not exist: a blank page. Every module change ships with a bust + SW version bump. |
 | 2026-09-09 | Count numeral via `painter.splashSvg()` with the budget raised to 6000 splats and 800 samples per path. | Each splat is a full-quad GL pass over the dye; ~6000 per second took headless Chrome to ~6 fps and saturated the dye into a blob. Long filled shapes need a raster stamp, not path splats. |
 | 2026-09-09 | Wobble as a perpendicular sinusoid with wavelength ≈ 9 brush radii at amplitude 0.6 R. | Read as a scribble on the CDP frames — the whole figure zig-zagged. Wavelength ≈ 20 R and amplitude 0.25 R reads as a hand tremor. Lesson: continuity exposes wobble that per-segment jitter used to hide at the joints. |
@@ -94,12 +95,14 @@ Implementation details, file-level conventions, build/test commands, dev-server.
 - Python 3 is on PATH (it is on macOS). — status: validated — since: 2026-05-20
 - The dev server can be reached on `http://127.0.0.1:8766` from the user's browser. — status: validated 2026-09-10 (8765 was taken by another project; back on 8766, LAN 192.168.0.198:8766). — since: 2026-05-20
 - Headless SwiftShader frame counts (25–38 fps on the count screens) are a floor, not a measure; `steps > frames` in the CDP stats means the sim is catching up, i.e. the renderer, not the sim, is the bottleneck there. — status: untested on device — since: 2026-09-10
+- Headless SwiftShader frame counts (25–38 fps on the count screens) are a floor, not a measure; `steps > frames` in the CDP stats means the sim is catching up, i.e. the renderer, not the sim, is the bottleneck there. — status: untested on device — since: 2026-09-10
 
 ## Dependencies
 Blocked by:
 Feeds into:
 
 ## Session Log
+- 2026-09-10 (full-day sync) — Assumptions updated (port, headless fps as a floor). Day's dead ends recorded: 6000-splat numeral, single-slot mask cache, figure not passed to the painter, SVG filter region on axis-aligned strokes, 0.42 R figures unreadable.
 - 2026-09-10 (full-day sync) — Assumptions updated (port, headless fps as a floor). Day's dead ends: 6000-splat numeral, single-slot mask cache, figure not passed to the painter, SVG filter region on axis-aligned strokes (docs page), 0.42 R figures unreadable.
 - 2026-09-10 (◎ per-slot pins) — figures permanent until their digit changes; SW v18.
 - 2026-09-10 (◎ permanent ring) — pinned ring + figure-only growth; figures enlarged; SW v17.

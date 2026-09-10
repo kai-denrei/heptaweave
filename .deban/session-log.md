@@ -165,3 +165,4 @@ deban-sync commit landing now.
 2026-09-10 06:50 — SYNC — ◎ ring-stave counter (COUNT_R, #countup3) with landing emblem; PoC of the glyph as an alternative. Roles: pm, dev, design.
 2026-09-10 07:30 — SYNC — ◎ counter: ring pinned and hovering, figures grow and dissolve per beat. Roles: dev, design.
 2026-09-10 08:10 — SYNC — ◎ counter: per-slot permanent figures, only the changed slot is redrawn. Roles: dev, design.
+2026-09-10 08:40 — SYNC — full-day sync: arch decisions (restore-stamp permanence, figure-agnostic painter, surface field, lab-as-params), pm open items + lessons + assumption, dev assumptions + dead end, index brief/key decisions/questions refreshed.

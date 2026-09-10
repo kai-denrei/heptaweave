@@ -9,13 +9,17 @@ stale_threshold_days: 30
 # heptaweave — Index
 
 ## Brief
-Solo PWA quiz, symbol-only UI: a Cistercian numeral (0–9999) is rendered in
-sumi-ink on cream paper; the player picks the matching heptacipher logogram
-from N choices. Two modes: ⧖ (60s shrinking timer, -10s on wrong) and ∞
-(first wrong ends the run). Bit-milestone difficulty (tier = bitlength(score))
-composably advances reveal time, choice count, and distractor closeness.
-Score is a variable-width binary row in ink, top-left. v1 ships both choice
-renderers (lobes-only and full mini) toggleable via a long-press on landing.
+Solo PWA, symbol-only UI, one rules engine under two renderers. The default
+look (since 2026-09-10) is black ink on rippling pale water: a WebGL dye
+field with a wave-equation surface. Game: a Cistercian numeral (0–9999) grows
+as one trait and dissolves — its dissolution is the clock — and the player
+picks the matching heptacipher logogram. Two modes, ⧖ and ∞, bit-milestone
+difficulty, fixed 8-bit score. Beside the game, three counters: + left
+(Cistercian, to 10^8), + right (logogram, per-slot drops on permanent lines),
+◎ top-right (the ring-stave numeral — Cistercian digit logic on the
+heptaweave's ring — with a permanent hovering ring and per-slot permanent
+figures). Deep links `#countup1..3&t=`. Tuning via `#admin`; experiments via
+the hidden ⚙ lab. `paper.html` is the original cream-paper renderer.
 
 ## Active Roles
 - [[pm]] — owner: claude-on-kainode
@@ -50,16 +54,24 @@ renderers (lobes-only and full mini) toggleable via a long-press on landing.
   `src/test/presets.js`, and share as a link. Same workflow as tune.html,
   generalised.
 
+- 2026-09-09/10: **permanence in a dissolving medium** = the stamp pass's
+  restore mode pinning raster layers at a breathing anchor; **diegetic
+  counting** = only the slot that changes is redrawn; **figure-agnostic
+  growth painter** (Cistercian, ring-stave) — see [[arch]] 2026-09-10.
+- 2026-09-10: **inverted ground + water surface promoted to the default**;
+  **ring-stave numeral** (no stems; ring opens at the bottom, thin end =
+  units, thick end = highest place, 8 slots) built and given its own door.
+- Deploy discipline: `bust.sh` + `CACHE_VERSION` bump + push ([[dev]] Lessons).
+
 ## Open Questions (cross-role)
-- **Next pass (captured 2026-09-03, intents now resolved):** (1) The
-  Cistercian becomes ONE unbroken trait grown radially from the centre of the
-  stem, stem and four digits written simultaneously — no accents. Blocking
-  sub-question: digit 6's bar attaches to the stave nowhere, so it cannot be
-  reached by a front rooted at the stem ([[pm]]); mechanism is a
-  connected-figure-with-distance-from-root builder ([[dev]]). (2) The round-glyph
-  mode starts as the **inversion** — logogram as prompt, Cistercian as choices.
-  Open: whether it is a third mode or a modifier orthogonal to ⧖/∞, and whether
-  the closeness table transfers ([[pm]], [[arch]]).
+- **Resolved 2026-09-09/10:** one-trait Cistercian built (digit 6 self-seeded);
+  the inversion is superseded in practice by the counters and the ring-stave
+  glyph, but the Renderer **kind axis** it needed is only half-built
+  ([[arch]]) — finish it before any ring-stave *game* mode ([[pm]]).
+- **Provisional defaults:** every look number set on 2026-09-09/10 is a
+  headless-verified first guess awaiting the operator's tuned JSON ([[pm]]).
+- **`paper.html`'s fate** now that the default is ink-on-water, and the
+  counters' differing ceilings (10^8 vs 10^4) ([[pm]]).
 - **Consequences of making a WebGL theme the default, unresolved:** no-WebGL
   devices land on the ⊘ sigil instead of the playable paper theme;
   `prefers-reduced-motion` is not honored by the fluid; real-device frame
