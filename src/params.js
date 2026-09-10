@@ -66,12 +66,13 @@ export const SCHEMA = [
   // ---- count: the + mode's one big logogram -----------------------------
   ['count', 'countSize',      'numeral extent (of short side)', 0.3, 1, 0.01, 0.8],
   ['count', 'countInk',       'numeral ink',          0.05,  1,    0.01,  0.22],
-  ['count', 'countDrift',     'drift ×',              0,     1,    0.05,  0.15],
+  ['count', 'countTrace',     'grow time (ms)',       100,   900,  10,    320],
+  ['count', 'countLife',      'old ink gone after (s)', 0.3, 3,    0.05,  0.9],
+  ['count', 'countFlow',      'current ×',            0,     3,    0.05,  0.7],
+  ['count', 'countPin',       'ring pin / frame',     0.01,  0.5,  0.01,  0.08],
+  ['count', 'countReveal',    'new digit 0=dims 1=grows', 0, 1,    1,     1],
   ['count', 'countBreathe',   'breathe (size %)',     0,     8,    0.1,   2],
   ['count', 'countBreatheS',  'breathe period (s)',   2,     40,   0.5,   11],
-  ['count', 'countFade',      'fade / step',          0.95,  1,    0.001, 0.996],
-  ['count', 'countErase',     'erase reach (px)',     0,     12,   0.5,   3],
-  ['count', 'countReveal',    'new digit 0=dims 1=grows', 0, 1,    1,     1],
 
   // ---- countC: the left +, a Cistercian glyph per second -----------------
   ['countC', 'countCSize',    'glyph size',           0.25,  0.9,  0.01,  0.7],

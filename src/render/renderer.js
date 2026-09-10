@@ -8,6 +8,7 @@
 //   mount({ root, on })        — build/gather DOM once. `on` carries callbacks:
 //                                on.modeSelect(mode), on.gameOverTap(),
 //                                on.countHold() (1 s press on the count screen),
+//                                on.copyLink() → Promise<boolean> (the hidden ⧉),
 //                                on.cornerHold() (1 s press on landing's
 //                                bottom-right — themes may use it or not).
 //   showScreen(name)           — 'landing' | 'play' | 'gameover' | 'count'

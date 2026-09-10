@@ -13,7 +13,7 @@
 import { createRng } from './util/rng.js';
 import { buildRound } from './game/round.js';
 import { MODE, PHASE, createStore } from './game/state.js';
-import { MODE_CONFIG, isCleanResult } from './game/modes.js';
+import { MODE_CONFIG, isCleanResult, modeFromHash } from './game/modes.js';
 
 // ============================================================================
 // Persistence helpers
@@ -112,7 +112,7 @@ function wireInstallAffordance() {
 // ============================================================================
 // Boot
 // ============================================================================
-export function boot({ renderer, params = null, onCornerHold = null }) {
+export function boot({ renderer, params = null, onCornerHold = null, hash = '' }) {
   const P = (key, fallback) => {
     if (!params) return fallback;
     const v = params.get(key);
@@ -342,6 +342,22 @@ export function boot({ renderer, params = null, onCornerHold = null }) {
     if (inst) inst.hidden = true;
   }
 
+  // Deep links: a counter mode is addressable as `#countup1` / `#countup2`
+  // (see MODE_CONFIG.deepLink). `deepLinkUrl()` is the URL of what is on
+  // screen now; the landing has none, so it returns the bare page URL.
+  function deepLinkUrl() {
+    const s = store.get();
+    const url = new URL(location.href);
+    const link = (s.phase !== PHASE.LANDING && s.mode) ? MODE_CONFIG[s.mode]?.deepLink : null;
+    url.hash = link ? `#${link}` : '';
+    return url.toString();
+  }
+  async function copyLink() {
+    const url = deepLinkUrl();
+    try { await navigator.clipboard.writeText(url); return true; }
+    catch { return false; }
+  }
+
   renderer.mount({
     root: document.body,
     on: {
@@ -349,11 +365,15 @@ export function boot({ renderer, params = null, onCornerHold = null }) {
       gameOverTap: backToLanding,
       countHold: backToLanding,
       cornerHold: onCornerHold,
+      copyLink,
     },
   });
   wireInstallCapture();
   wireInstallAffordance();
   renderer.showScreen('landing');
 
-  return { store, startGame, backToLanding };
+  const linked = modeFromHash(hash);
+  if (linked && renderer.ok !== false) startGame(linked);
+
+  return { store, startGame, backToLanding, deepLinkUrl };
 }

@@ -10,13 +10,14 @@
 //   +⟵ (COUNT_C) the ∞ prompt's Cistercian, one per second: traced fast,
 //      never frozen, dissolved to the floor inside `countCLife` so stems do
 //      not pile up. Uses the growth-front painter with a per-glyph tempo.
-//   +  no clock: one large logogram stamped in layers (ring + one per
-//      digit). When the value changes, the new digit's ink sweeps in along
-//      the ring over the whole period (a growth front, like the Cistercian)
-//      while the old digit's ink is faded out by the fluid over the same
-//      period. Everything else is topped up continuously by exactly the ink
-//      the fade takes, at an anchor that breathes (slow scale + drift), so
-//      the figure moves like something alive and never steps in brightness.
+//   +  (COUNT) one large logogram in layers (ring + one per digit). The
+//      water runs the Cistercian counter's clock (`countLife`, `countFlow`),
+//      but the ring and the current digits are *pinned*: each frame the dye
+//      under their masks is pulled toward the target density at a breathing
+//      anchor. A changed digit's old marks are simply unpinned, so they drift
+//      and dissolve exactly like a Cistercian glyph, while the new marks
+//      sweep in over `countTrace` ms and are pinned from then on. The ring
+//      is never redrawn.
 // Choices are overlaid SVG logograms in the palette's core colour; the
 // tapped one is splatted into the fluid as the reaction (correct = core
 // colour bloom, wrong = ember splash + drain).
@@ -75,8 +76,7 @@ export function createInkRenderer({ params }) {
   let countGeom = null;      // { rect, size }
   let countShown = null;     // digits currently on the water, or null
   let countAnims = [];       // in-flight digit transitions, see stepCountAnims()
-  let countCurrent = null;   // { ring, digits: layer[4] } being kept alive
-  let countOwed = 0;         // top-up ink accrued since the last trickle stamp
+  let countCurrent = null;   // { ring, digits: layer[4] } being pinned
   let countScratch = null;   // reusable canvas for wedge slices
   let countVersion = 0;      // bumps per wedge slice so the mask re-uploads
   const COUNT_RASTER = 1;    // raster px per CSS px for count layers
@@ -152,9 +152,11 @@ export function createInkRenderer({ params }) {
       cfg.flowStr = params.get('flowStrength') * params.get('countCFlow');
       cfg.diffuse = diffuse;
     } else if (screen === 'count') {
-      cfg.dissip = params.get('countFade');
-      cfg.flowStr = params.get('flowStrength') * params.get('countDrift');
-      cfg.diffuse = 0;
+      cfg.dissip = dissipFor(params.get('countLife'), params.get('dissolveFloor'));
+      cfg.flowStr = params.get('flowStrength') * params.get('countFlow');
+      // Half the diffusion: a pinned ring leaks ink through its mask edge
+      // every frame, and full diffusion turns that leak into a fog.
+      cfg.diffuse = diffuse * 0.5;
     } else if (phase === 'paint' || phase === 'hold') {
       cfg.dissip = 1; cfg.flowStr = 0; cfg.diffuse = 0;
     } else if (phase === 'ramp') {
@@ -217,7 +219,7 @@ export function createInkRenderer({ params }) {
       acc -= FIXED; steps++; debug.steps++;
     }
 
-    if (screen === 'count') countMaintain(now, dt, steps);
+    if (screen === 'count') countMaintain(now, dt);
 
     fluid.render({
       bloomThreshold: params.get('bloomThreshold'),
@@ -436,24 +438,23 @@ export function createInkRenderer({ params }) {
     const w = g.w * s, h = g.h * s;
     return fluid.rectFromClient(g.cx - w / 2 + dx, g.cy - h / 2 + dy, w, h);
   }
-  // Per-frame keep-alive: trickle back exactly the ink the fade removed since
-  // the last trickle, in doses large enough to survive byte textures, and
-  // advance any transitions. Runs after the sim steps of this frame.
-  function countMaintain(now, dt, steps) {
+  // Per-frame keep-alive: pin the ring and the current digits by pulling the
+  // dye under their masks toward the target density at the breathing anchor
+  // (rate `countPin`). Ink outside the masks — drifted halo, unpinned old
+  // digits — is left to the current and the clock. Runs after the sim steps.
+  function countMaintain(now, dt) {
     if (!countCurrent || !countGeom) return;
     const ink = params.get('countInk');
+    const pin = params.get('countPin');
     const rect = countRect(now);
     if (countAnims.length) stepCountAnims(now, dt, rect);
-    countOwed += ink * (1 - Math.pow(params.get('countFade'), steps));
-    if (countOwed < 0.006) return;
     const rgb = coreRgb().map(c => c * 3);
-    fluid.stamp(countCurrent.ring.c, rect, rgb, countOwed);
+    if (!countAnims.some(a => a.place === -1)) fluid.stamp(countCurrent.ring.c, rect, rgb, pin, { erase: true, target: ink });
     countCurrent.digits.forEach((l, i) => {
       const a = countAnims.find(x => x.place === i);
-      if (!a) fluid.stamp(l.c, rect, rgb, countOwed);
-      else if (a.shared) fluid.stamp(a.shared.c, rect, rgb, countOwed);
+      if (!a) fluid.stamp(l.c, rect, rgb, pin, { erase: true, target: ink });
+      else if (a.shared) fluid.stamp(a.shared.c, rect, rgb, pin, { erase: true, target: ink });
     });
-    countOwed = 0;
   }
   // The new layer clipped to the wedge slice [ta, tb] of its angular span.
   function wedgeSlice(l, wg, ta, tb) {
@@ -476,16 +477,11 @@ export function createInkRenderer({ params }) {
     const keep = [];
     for (const a of countAnims) {
       a.rect = rect;
-      const t = Math.min(1, (now - a.start) / Math.max(1, a.periodMs));
+      const t = Math.min(1, (now - a.start) / Math.max(1, a.traceMs));
       const f0 = easeOut(a.lastT), f1 = easeOut(t);
       if (f1 > f0) {
         if (a.wedge) fluid.stamp(wedgeSlice(a.neu, a.wedge, f0, f1), a.rect, a.rgb, a.ink, { version: ++countVersion });
         else fluid.stamp(a.neu.c, a.rect, a.rgb, a.ink * (f1 - f0));
-      }
-      // Fade the old ink so it reaches the dissolve floor as the period ends.
-      if (a.erase && dt > 0) {
-        const perFrame = 1 - Math.pow(0.02, dt * 1000 / Math.max(1, a.periodMs));
-        fluid.stamp(a.erase, a.rect, a.rgb, perFrame, { erase: true });
       }
       a.lastT = t;
       if (t >= 1) finishCountAnim(a); else keep.push(a);
@@ -499,7 +495,6 @@ export function createInkRenderer({ params }) {
       if (a.wedge) fluid.stamp(wedgeSlice(a.neu, a.wedge, f0, 1), a.rect, a.rgb, a.ink, { version: ++countVersion });
       else fluid.stamp(a.neu.c, a.rect, a.rgb, a.ink * (1 - f0));
     }
-    if (a.erase) fluid.stamp(a.erase, a.rect, a.rgb, 1, { erase: true });
     a.lastT = 1;
   }
 
@@ -530,6 +525,7 @@ export function createInkRenderer({ params }) {
         gameDot:        document.getElementById('gameOverDot'),
         count:          document.getElementById('screenCount'),
         countStage:     document.getElementById('countStage'),
+        deepLink:       document.getElementById('deepLink'),
       };
       fluid = createFluid(els.canvas, { simScale: params.get('simScale') });
       if (!fluid.ok) return;
@@ -546,6 +542,18 @@ export function createInkRenderer({ params }) {
       });
       els.gameover.addEventListener('click', on.gameOverTap);
       if (els.count && on.countHold) wireHold(els.count, on.countHold);
+      // The hidden ⧉: copy the deep link of what is on screen; a successful
+      // copy flashes the glyph once, its only visible moment.
+      if (els.deepLink && on.copyLink) {
+        els.deepLink.addEventListener('click', async (ev) => {
+          ev.stopPropagation();
+          const ok = await on.copyLink();
+          if (!ok) return;
+          els.deepLink.classList.add('flash');
+          setTimeout(() => els.deepLink.classList.remove('flash'), 700);
+        });
+        els.deepLink.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+      }
       if (els.cornerHold && on.cornerHold) wireHold(els.cornerHold, on.cornerHold);
 
       let resizeT = null;
@@ -578,7 +586,7 @@ export function createInkRenderer({ params }) {
 
     startRun({ mode, totalMs }) {
       run = { mode, timeRemainingMs: totalMs, totalMs };
-      countShown = null; countGeom = null; countAnims = []; countCurrent = null; countOwed = 0; countKind = null;
+      countShown = null; countGeom = null; countAnims = []; countCurrent = null; countKind = null;
       lastBitCount = 0;
       els.choices.replaceChildren();
       painter.cancel();
@@ -672,31 +680,28 @@ export function createInkRenderer({ params }) {
           // anchor scales and drifts this each frame (see countRect()).
           countGeom = { size, cx: cx - (bb.x + bb.w / 2 - ring.c.width / 2) * k, cy: cy - (bb.y + bb.h / 2 - ring.c.height / 2) * k, w, h };
         }
-        const rect = countRect(performance.now());
-        const reach = params.get('countErase') * COUNT_RASTER;
+        const traceMs = Math.min(params.get('countTrace'), periodMs * 0.9);
+        const grow = params.get('countReveal') >= 1;
+        const startAnim = (place, neu, shared, wedge, ms) => {
+          const running = countAnims.findIndex(a => a.place === place);
+          if (running >= 0) { finishCountAnim(countAnims[running]); countAnims.splice(running, 1); }
+          countAnims.push({ place, neu, shared, rgb, ink, wedge, start: performance.now(), traceMs: ms, lastT: 0 });
+        };
         countCurrent = { ring, digits: news.slice() };
         if (!prev) {
-          fluid.stamp(ring.c, rect, rgb, ink);
-          for (const l of news) fluid.stamp(l.c, rect, rgb, ink);
+          // Entry: the ring sweeps round once (place −1), the digits grow in.
+          const c = ring.centre;
+          startAnim(-1, ring, null, grow ? { cx: c.x, cy: c.y, a0: -Math.PI / 2, a1: Math.PI * 1.5, R: Math.hypot(ring.c.width, ring.c.height) } : null, traceMs * 2);
+          news.forEach((l, i) => startAnim(i, l, null, grow ? wedgeFor(l) : null, traceMs));
         } else {
           digits.forEach((d, i) => {
             if (d === prev[i]) return;
-            // Hand the change to the frame loop: sweep the new ink in and
-            // fade the old ink out over `periodMs`. A transition already
-            // running on this place is finished first.
-            const running = countAnims.findIndex(a => a.place === i);
-            if (running >= 0) { finishCountAnim(countAnims[running]); countAnims.splice(running, 1); }
-            // Marks both digits share are already on the water: they are
-            // neither faded (old − new) nor re-inked (new − old).
-            const erase = olds[i] ? dilate(olds[i].c, reach, ring.c, news[i].c) : null;
+            // The old marks are unpinned from here on and dissolve like a
+            // Cistercian glyph; marks both digits share stay pinned; the new
+            // marks sweep in over `countTrace` and are pinned once landed.
             const fresh = olds[i] ? { ...news[i], c: dilate(news[i].c, 0, olds[i].c) } : news[i];
-            // Marks both digits share keep being topped up meanwhile.
             const shared = olds[i] ? { ...news[i], c: dilate(news[i].c, 0, fresh.c) } : null;
-            countAnims.push({
-              place: i, neu: fresh, erase, shared, rgb, ink,
-              wedge: params.get('countReveal') >= 1 ? wedgeFor(news[i]) : null,
-              start: performance.now(), periodMs, lastT: 0,
-            });
+            startAnim(i, fresh, shared, grow ? wedgeFor(news[i]) : null, traceMs);
           });
         }
         countShown = digits;

@@ -270,7 +270,7 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
    * `rectFromClient`.
    */
   let maskLast = { source: null, version: -1 };
-  function stamp(source, rect, rgb, amount, { erase = false, version = 0 } = {}) {
+  function stamp(source, rect, rgb, amount, { erase = false, target = 0, version = 0 } = {}) {
     gl.bindTexture(gl.TEXTURE_2D, maskTex);
     // Re-upload only when the mask changed: a static erase mask is stamped
     // every frame for a second, a wedge slice changes every frame.
@@ -292,6 +292,7 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     gl.uniform3f(progStamp.u.u_color, rgb[0], rgb[1], rgb[2]);
     gl.uniform1f(progStamp.u.u_amount, amount);
     gl.uniform1f(progStamp.u.u_erase, erase ? 1 : 0);
+    gl.uniform1f(progStamp.u.u_target, target);
     drawQuad();
     dye.swap();
   }

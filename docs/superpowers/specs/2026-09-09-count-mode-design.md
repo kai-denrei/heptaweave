@@ -84,6 +84,38 @@ applied."
   screen, so the same painter lands in the right place.
 - Params group `countC`: size, grow time, ramp, gone-after, current ×, ink ×.
 
+## Deep links and the hidden ⧉ (2026-09-10)
+
+- `MODE_CONFIG[...].deepLink`: `countup1` = left (Cistercian), `countup2` =
+  right (logogram). `modeFromHash()` reads the hash at boot (composable with
+  `admin` / `p=`), and `boot({ hash })` starts that mode straight from the
+  landing. Hold-to-leave still returns to the landing; the hash stays so a
+  reload re-enters.
+- `#deepLink`: a 48 px invisible button fixed at the top-left of every screen.
+  Click → `on.copyLink()` → main.js copies `deepLinkUrl()` (the current
+  mode's link, or the bare page URL on the landing). A successful copy flashes
+  the glyph once; that is its only visible moment.
+
+## Logogram counter, second pass (2026-09-10)
+
+Operator: "I like the size and disappearing motions of the Cistercian much
+better, we want a similar set of variables for the Heptaweave, except that
+the main circle does not get redrawn."
+
+- The count screen now runs the Cistercian counter's clock for both kinds:
+  dissipation from `countLife` (0.9 s), current `flowStrength × countFlow`,
+  diffusion at half strength.
+- The ring and the current digits are **pinned**: `FRAG_STAMP` gained a
+  restore mode (`u_target`) that pulls the dye under a mask toward a target
+  density at rate `countPin` per frame, at the breathing anchor. A changed
+  digit's old marks are simply no longer pinned, so they drift and dissolve
+  exactly like a Cistercian glyph. New marks sweep in over `countTrace` ms
+  (or dim in) and are pinned once landed. The ring sweeps round once on entry
+  and is never redrawn after that.
+- `count` params: extent, ink, grow time, old-ink-gone-after, current ×,
+  ring pin / frame, reveal, breathe, breathe period. The trickle keep-alive,
+  fade and erase-reach params are gone.
+
 ## Verification
 
 `node scripts/ink-cdp-shots.mjs <out> COUNT "" 400,1400,1850,2400,6300`:

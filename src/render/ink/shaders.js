@@ -117,15 +117,19 @@ uniform sampler2D u_mask;
 uniform vec4  u_rect;     // x, y, w, h in uv (GL, bottom-up)
 uniform vec3  u_color;
 uniform float u_amount;
-uniform float u_erase;    // 0 = add ink, 1 = remove ink under the mask
+uniform float u_erase;    // 0 = add ink; 1 = pull the dye toward u_target under the mask
+uniform float u_target;   // density the mask is pulled toward (0 = erase)
 void main() {
   vec4 base = texture2D(u_dye, v_uv);
   vec2 m = (v_uv - u_rect.xy) / u_rect.zw;
   float inside = step(0.0, m.x) * step(m.x, 1.0) * step(0.0, m.y) * step(m.y, 1.0);
   float f = texture2D(u_mask, clamp(m, 0.0, 1.0)).a * inside;
   vec4 added = base + vec4(u_color * f * u_amount, f * u_amount);
-  vec4 erased = base * (1.0 - clamp(f * u_amount, 0.0, 1.0));
-  gl_FragColor = mix(added, erased, u_erase);
+  // Restore: mix toward (colour × target, target) at rate amount. With
+  // target 0 this is an erase; with target > 0 it pins ink in place while
+  // everything outside the mask flows and fades freely.
+  vec4 pinned = mix(base, vec4(u_color * u_target, u_target), clamp(f * u_amount, 0.0, 1.0));
+  gl_FragColor = mix(added, pinned, u_erase);
 }`;
 
 export const FRAG_PREFILTER = `

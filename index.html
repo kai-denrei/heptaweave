@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
 
   <!-- PWA. theme_color is the dark stage: the ink theme is the default app. -->
-  <link rel="manifest" href="manifest.webmanifest?v=19c4a775" />
+  <link rel="manifest" href="manifest.webmanifest?v=a33b8f5c" />
   <meta name="theme-color" content="#08090d" />
-  <link rel="apple-touch-icon" href="icon-180.png?v=19c4a775" />
+  <link rel="apple-touch-icon" href="icon-180.png?v=a33b8f5c" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="heptaweave" />
@@ -18,8 +18,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="cb" content="19c4a775" />
-  <link rel="icon" type="image/svg+xml" href="public/cb-shapes/25.svg?v=19c4a775" />
+  <meta name="cb" content="a33b8f5c" />
+  <link rel="icon" type="image/svg+xml" href="public/cb-shapes/35.svg?v=a33b8f5c" />
 
   <style>
     :root {
@@ -78,6 +78,17 @@
       transform: translateY(-50%); font-size: 84px; padding: 24px;
     }
     .mode-btn[data-mode="COUNT_C"]:hover, .mode-btn[data-mode="COUNT_C"]:active { transform: translateY(-50%) scale(1.04); }
+
+    /* ⧉ deep-link copier: an invisible 48 px target in the top-left corner.
+       It never shows; a successful copy flashes it once as the only ack. */
+    .deep-link {
+      position: fixed; left: max(4px, env(safe-area-inset-left)); top: max(4px, env(safe-area-inset-top));
+      width: 48px; height: 48px; z-index: 5;
+      background: transparent; border: none; padding: 0; cursor: pointer;
+      color: var(--ink); font: 400 22px/48px ui-serif, serif; text-align: center;
+      opacity: 0; transition: opacity 200ms;
+    }
+    .deep-link.flash { opacity: 0.7; transition: none; }
 
     /* ====== COUNT ====== */
     .count { display: flex; align-items: center; justify-content: center; }
@@ -304,6 +315,7 @@
 <body>
   <canvas id="stage"></canvas>
   <div class="app">
+    <button class="deep-link" id="deepLink" type="button" aria-label="copy link" tabindex="-1">⧉</button>
 
     <section class="screen landing" id="screenLanding">
       <button class="mode-btn" data-mode="TIMED" aria-label="Timed mode">⧖</button>
@@ -413,6 +425,7 @@
     const app = boot({
       renderer,
       params,
+      hash: location.hash,
       onCornerHold: () => { if (panel) panel.toggle(); },
     });
     if (!renderer.ok) {

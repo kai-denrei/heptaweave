@@ -31,6 +31,7 @@ export const MODE_CONFIG = {
     glyph: 'heptaweave',
     periodMs: 1000,
     wrapAt: 10000,
+    deepLink: 'countup2',
   },
   // The left +: the same counter drawn as the ∞ prompt's Cistercian glyph,
   // traced and dissolved inside each second.
@@ -44,8 +45,18 @@ export const MODE_CONFIG = {
     glyph: 'cistercian',
     periodMs: 1000,
     wrapAt: 10000,
+    deepLink: 'countup1',
   },
 };
+
+/** The mode a `#hash` (e.g. '#countup1&admin') deep-links to, or null. */
+export function modeFromHash(hash) {
+  const parts = (hash || '').replace(/^#/, '').split('&');
+  for (const [mode, cfg] of Object.entries(MODE_CONFIG)) {
+    if (cfg.deepLink && parts.includes(cfg.deepLink)) return mode;
+  }
+  return null;
+}
 
 export function isCleanResult({ mode, errors }) {
   // Clean = no errors during the run, regardless of how the run ended.
