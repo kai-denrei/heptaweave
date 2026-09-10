@@ -135,11 +135,14 @@ the same ink slightly hovering." `inverted` and `surface` default to 1.
   then fade to transparent but keep their layout; the clean/error dot stays
   an overlay. Leaving the screen drops the pins.
 - **Lab: ring-stave numeral** (`glyphMix`). `src/cistercian/ringStave.js`
-  builds the proposal's glyph as distance-tagged polylines: ring rooted at
-  its midpoint (opposite the opening), stems at the four Cistercian quadrant
-  angles, the unchanged Cistercian digit paths in each stem's frame (left
-  places mirror the side, lower places swap tip and foot), digit 6 seeded at
-  its midpoint when the front reaches the stem tip. The painter takes a
+  builds the glyph as distance-tagged polylines. **Rev 2 (operator: "we just
+  get rid of the stem")**: no stems — the ring is the stave, figures stand
+  on it (along the ring = up the stave, radial = out). `ringSlots` positions
+  (8 default, 4–16); numbers read from the right: units at the upper-right,
+  each higher place the next slot counter-clockwise, only as many slots as
+  digits, 0 = bare ring. Adjacent slots mirror tip/foot. Digit 6 seeds at
+  its midpoint a beat after the front passes its slot. Spec page:
+  `docs/ring-stave.html`. The painter takes a
   `figure` and both the ∞/⧖ prompt and the left counter draw it when the
   switch is on.
 

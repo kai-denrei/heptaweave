@@ -90,6 +90,7 @@ export const SCHEMA = [
   ['lab', 'rippleAmbient', 'ambient ripples / min', 0,    60,   1,     12],
   ['lab', 'rippleTouch',   'touch ripple',         0,     2,    0.05,  0.6],
   ['lab', 'glyphMix',      'ring-stave numeral (Cistercian × heptaweave)', 0, 1, 1, 0],
+  ['lab', 'ringSlots',     'ring-stave slots',     4,     16,   1,     8],
 
   // ---- result: the game-over score, in ink -----------------------------
   ['result', 'resultInk',      'score ink',            0.05,  1,    0.01,  0.3],

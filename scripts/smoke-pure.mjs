@@ -248,7 +248,13 @@ console.log('ring stave');
   ok('the figure stays inside its cell', inside);
   ok('digit 6 (and only 6) grows from its own seed', sixSeeded);
   const zero = ringStaveGrowthPx({ number: 0, size: 300 });
-  ok('0 is the ring and four bare stems', zero.paths.length === 6);
+  ok('0 is the bare ring', zero.paths.length === 2);
+  const { placeDigits } = await import('../src/cistercian/ringStave.js');
+  ok('digits read from the right, no leading zeros', JSON.stringify(placeDigits(20)) === '[0,2]' && JSON.stringify(placeDigits(12345)) === '[5,4,3,2,1]' && JSON.stringify(placeDigits(0)) === '[0]');
+  const five = ringStaveGrowthPx({ number: 12345, size: 300, slots: 8 });
+  ok('a 5-digit number occupies five slots', new Set(five.paths.filter(p => p.place !== 'stave').map(p => p.place)).size === 5);
+  const wide = ringStaveGrowthPx({ number: 1234567890123456, size: 300, slots: 16 });
+  ok('16 slots hold a 16-digit number inside the cell', wide.paths.every(p => p.points.every(q => q.x >= -1 && q.y >= -1 && q.x <= 301 && q.y <= 301)));
 }
 
 console.log('band layout');

@@ -51,7 +51,7 @@ export function createPainter({ fluid, params }) {
    */
   function buildSamples({ number, box, seed, figure = 'cistercian' }) {
     const build = BUILDERS[figure] || cistercianGrowthPx;
-    const { paths, maxD: md } = build({ number, size: box.w, padFrac: 0.10 });
+    const { paths, maxD: md } = build({ number, size: box.w, padFrac: 0.10, slots: params.get('ringSlots') });
     maxD = md;
     radiusPx = params.get('strokeRadius') * box.w;
     const spacing = Math.max(0.5, radiusPx * 0.5);

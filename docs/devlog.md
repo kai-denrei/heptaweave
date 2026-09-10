@@ -3,6 +3,12 @@
 Newest at top. Alternatives we chose *not* to build yet live here so they
 can be picked up later without re-deriving them.
 
+## 2026-09-10 — ring-stave numeral, rev 2
+
+No stems: figures stand on the ring. Eight slots (up to sixteen) read from the
+right, units at the upper-right, higher places counter-clockwise; a number uses
+only as many slots as it has digits. `docs/ring-stave.html` is the spec page.
+
 ## 2026-09-10 — the logogram counter becomes diegetic
 
 Lines are permanent ink; drops land on them (300 ms, a ripple where they hit)
