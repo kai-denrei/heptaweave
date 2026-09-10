@@ -158,3 +158,4 @@ deban-sync commit landing now.
 2026-09-09 04:10 — SYNC — left + Cistercian counter (COUNT_C) via prompt pipeline with per-glyph tempo. Roles: pm, dev, design.
 2026-09-10 00:40 — SYNC — deep links (#countup1/#countup2, hidden ⧉), logogram counter pinned-ring rework. Roles: pm, dev, design.
 2026-09-10 02:10 — SYNC — start-time deep links, hidden lab gear + modal, inverted ground, GPU ripple surface. Roles: pm, dev, design.
+2026-09-10 03:20 — SYNC — inverted + ripples default; result screen in hovering ink; ring-stave numeral behind lab glyphMix. Roles: pm, dev, design.

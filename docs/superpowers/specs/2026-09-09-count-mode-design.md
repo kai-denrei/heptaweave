@@ -121,6 +121,28 @@ sliders otherwise; values save with the other params. `#lab` opens it too.
   pointer-down on the stage pokes it (`rippleTouch`) and `rippleAmbient`
   pokes it on its own so it is never glass. Zero cost when off.
 
+### Promoted to the default look (later 2026-09-10)
+
+Operator: "we keep inverted and ripples ON as the default look, and we use
+that look for the final result screen as well … the final score to also use
+the same ink slightly hovering." `inverted` and `surface` default to 1.
+
+- **Result screen in ink.** After `showScreen('gameover')`, the next frame
+  clones the three score SVGs (binary row, heptacipher, Cistercian) at their
+  laid-out size, rasterises them white, and pins each in the dye at its own
+  rect with its own breathing phase (`resultInk`, `resultPin`,
+  `resultBreathe`, `resultBreatheS`; the pin eases in over 0.5 s). The SVGs
+  then fade to transparent but keep their layout; the clean/error dot stays
+  an overlay. Leaving the screen drops the pins.
+- **Lab: ring-stave numeral** (`glyphMix`). `src/cistercian/ringStave.js`
+  builds the proposal's glyph as distance-tagged polylines: ring rooted at
+  its midpoint (opposite the opening), stems at the four Cistercian quadrant
+  angles, the unchanged Cistercian digit paths in each stem's frame (left
+  places mirror the side, lower places swap tip and foot), digit 6 seeded at
+  its midpoint when the front reaches the stem tip. The painter takes a
+  `figure` and both the ∞/⧖ prompt and the left counter draw it when the
+  switch is on.
+
 ## Logogram counter, second pass (2026-09-10)
 
 Operator: "I like the size and disappearing motions of the Cistercian much

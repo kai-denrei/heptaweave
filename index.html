@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
 
   <!-- PWA. theme_color is the dark stage: the ink theme is the default app. -->
-  <link rel="manifest" href="manifest.webmanifest?v=858f8575" />
+  <link rel="manifest" href="manifest.webmanifest?v=b7a08fe5" />
   <meta name="theme-color" content="#08090d" />
-  <link rel="apple-touch-icon" href="icon-180.png?v=858f8575" />
+  <link rel="apple-touch-icon" href="icon-180.png?v=b7a08fe5" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="heptaweave" />
@@ -18,8 +18,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="cb" content="858f8575" />
-  <link rel="icon" type="image/svg+xml" href="public/cb-shapes/05.svg?v=858f8575" />
+  <meta name="cb" content="b7a08fe5" />
+  <link rel="icon" type="image/svg+xml" href="public/cb-shapes/55.svg?v=b7a08fe5" />
 
   <style>
     :root {
@@ -213,6 +213,8 @@
     }
     .gameover-dot svg { width: 56px; height: 56px; overflow: visible; filter: drop-shadow(0 0 8px currentColor); }
     .score-trinity { display: flex; flex-direction: column; align-items: center; gap: 14px; filter: drop-shadow(0 0 8px var(--glow)); }
+    /* Once the score glyphs are in the ink the SVGs only hold their layout. */
+    .gameover.ink-only .score-trinity { opacity: 0; transition: opacity 400ms ease-out; }
     .big-binary { width: min(86vw, 440px); height: 64px; display: flex; align-items: center; justify-content: center; }
     .big-binary svg { width: 100%; height: 100%; overflow: visible; }
     .big-heptacipher, .big-cistercian {

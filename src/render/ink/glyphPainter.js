@@ -21,6 +21,9 @@
 
 import { createRng } from '../../util/rng.js';
 import { cistercianGrowthPx } from '../../cistercian/growthFront.js';
+import { ringStaveGrowthPx } from '../../cistercian/ringStave.js';
+
+const BUILDERS = { cistercian: cistercianGrowthPx, ringstave: ringStaveGrowthPx };
 
 // RGB multiplier on injected colour relative to density, so a fresh stroke
 // reads as the palette's core stop (see the display shader's `core`).
@@ -46,8 +49,9 @@ export function createPainter({ fluid, params }) {
    * Free terminals (endpoints with the path's largest `d`, i.e. not the
    * attachment/seed end) get a taper; the whole path gets a gentle wobble.
    */
-  function buildSamples({ number, box, seed }) {
-    const { paths, maxD: md } = cistercianGrowthPx({ number, size: box.w, padFrac: 0.10 });
+  function buildSamples({ number, box, seed, figure = 'cistercian' }) {
+    const build = BUILDERS[figure] || cistercianGrowthPx;
+    const { paths, maxD: md } = build({ number, size: box.w, padFrac: 0.10 });
     maxD = md;
     radiusPx = params.get('strokeRadius') * box.w;
     const spacing = Math.max(0.5, radiusPx * 0.5);
@@ -108,9 +112,9 @@ export function createPainter({ fluid, params }) {
 
   return {
     /** Start growing a glyph. Nothing is splatted until `update()`. */
-    begin({ number, box, seed = 1, rgb, traceMs = null, inkScale = 1 }) {
-      current = { number, box, seed, rgb, traceMs, inkScale };
-      samples = buildSamples({ number, box, seed });
+    begin({ number, box, seed = 1, rgb, traceMs = null, inkScale = 1, figure = 'cistercian' }) {
+      current = { number, box, seed, rgb, traceMs, inkScale, figure };
+      samples = buildSamples({ number, box, seed, figure });
       emitted = 0;
       startMs = null;
       done = false;

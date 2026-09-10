@@ -3,6 +3,13 @@
 Newest at top. Alternatives we chose *not* to build yet live here so they
 can be picked up later without re-deriving them.
 
+## 2026-09-10 — inverted water becomes the default; result in ink; ring-stave glyph in the lab
+
+Inverted + ripples are now the look. The game-over trinity is rasterised and
+pinned in the dye, hovering. `src/cistercian/ringStave.js` implements the
+"Ring Stave Numerals" proposal behind the lab's `glyphMix` switch; the
+growth painter takes a `figure` so any distance-tagged builder can feed it.
+
 ## 2026-09-10 — lab: inverted ground, water surface
 
 Behind an invisible gear top-right. `inverted` is a second composition branch

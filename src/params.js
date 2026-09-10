@@ -83,12 +83,19 @@ export const SCHEMA = [
   ['countC', 'countCInk',     'stroke ink ×',         0.2,   1.5,  0.05,  0.8],
 
   // ---- lab: experiments behind the hidden gear (top-right) ----------------
-  ['lab', 'inverted',      'inverted: black ink, clear ground', 0, 1, 1, 0],
-  ['lab', 'surface',       'water surface (ripples)', 0,   1,    1,     0],
+  ['lab', 'inverted',      'inverted: black ink, clear ground', 0, 1, 1, 1],
+  ['lab', 'surface',       'water surface (ripples)', 0,   1,    1,     1],
   ['lab', 'rippleRefract', 'ripple refraction',    0,     3,    0.05,  1],
   ['lab', 'rippleDamp',    'ripple damping',       0.95,  0.999, 0.001, 0.986],
   ['lab', 'rippleAmbient', 'ambient ripples / min', 0,    60,   1,     12],
   ['lab', 'rippleTouch',   'touch ripple',         0,     2,    0.05,  0.6],
+  ['lab', 'glyphMix',      'ring-stave numeral (Cistercian × heptaweave)', 0, 1, 1, 0],
+
+  // ---- result: the game-over score, in ink -----------------------------
+  ['result', 'resultInk',      'score ink',            0.05,  1,    0.01,  0.3],
+  ['result', 'resultPin',      'pin / frame',          0.01,  0.5,  0.01,  0.06],
+  ['result', 'resultBreathe',  'hover (size %)',       0,     8,    0.1,   1.5],
+  ['result', 'resultBreatheS', 'hover period (s)',     2,     40,   0.5,   9],
 
   // ---- rules: test-mode overrides (−1 / 0 = use the table) --------------
   ['rules', 'pinTier',        'pin tier (−1 = off)',  -1,    9,    1,     -1],

@@ -70,6 +70,8 @@ export function createInkRenderer({ params }) {
   let run = { mode: null, timeRemainingMs: 0, totalMs: 0 };
   let wispAcc = 0;
   let rippleAcc = 0;         // lab: ambient ripple timer
+  let resultPins = [];       // game-over glyphs held in the ink: { c, geom, phase }
+  let resultPending = false; // stamp the result glyphs on the next frame after the screen shows
   let countToken = 0;
   let countKind = null;      // 'heptaweave' | 'cistercian' while on the count screen
   // + mode layer cache: key → Promise<canvas>; geometry shared by all layers.
@@ -223,6 +225,7 @@ export function createInkRenderer({ params }) {
     }
 
     if (screen === 'count') countMaintain(now, dt);
+    if (screen === 'gameover') resultMaintain(now);
     if (params.get('surface') >= 1) ambientRipples(dt);
 
     fluid.render({
@@ -237,6 +240,59 @@ export function createInkRenderer({ params }) {
       refract: params.get('rippleRefract'),
       invert: params.get('inverted') >= 1,
     });
+  }
+
+  // The result screen: the three score glyphs are rasterised from their
+  // (laid-out, then hidden) SVGs and pinned in the ink, each hovering on its
+  // own slow breath. Same pin as the counter's ring.
+  function resultStamp() {
+    resultPins = [];
+    const cells = [els.bigBinary, els.bigHeptacipher, els.bigCistercian];
+    cells.forEach((cell, i) => {
+      const svg = cell && cell.querySelector('svg');
+      if (!svg) return;
+      const r = svg.getBoundingClientRect();
+      if (!(r.width > 4 && r.height > 4)) return;
+      const clone = svg.cloneNode(true);
+      clone.setAttribute('width', String(Math.round(r.width)));
+      clone.setAttribute('height', String(Math.round(r.height)));
+      clone.setAttribute('color', '#fff');
+      clone.setAttribute('xmlns', SVG_NS);
+      const phase = i * 2.1;
+      rasterizeSvg(clone, 1.5).then((c) => {
+        if (screen !== 'gameover') return;
+        const geom = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, h: r.height };
+        resultPins.push({ c, geom, phase, born: performance.now() });
+      }).catch(() => {});
+    });
+    els.gameover.classList.add('ink-only');
+  }
+  function breatheRect(g, now, amp, periodS, phase) {
+    const T = Math.max(0.5, periodS) * 1000;
+    const ph = (now / T) * Math.PI * 2 + phase;
+    const s = 1 + amp * Math.sin(ph);
+    const dx = amp * g.w * 0.6 * Math.sin(ph * 0.61 + 1.3);
+    const dy = amp * g.h * 0.6 * Math.sin(ph * 0.43 + 2.9);
+    const w = g.w * s, h = g.h * s;
+    return fluid.rectFromClient(g.cx - w / 2 + dx, g.cy - h / 2 + dy, w, h);
+  }
+  function resultMaintain(now) {
+    if (resultPending) {
+      resultPending = false;
+      resultStamp();
+    }
+    if (!resultPins.length) return;
+    const ink = params.get('resultInk');
+    const pin = params.get('resultPin');
+    const amp = params.get('resultBreathe') / 100;
+    const T = params.get('resultBreatheS');
+    const rgb = coreRgb().map(c => c * 3);
+    for (const p of resultPins) {
+      // Ease the pin in over the first half second so the glyph soaks in
+      // rather than snapping on.
+      const k = pin * Math.min(1, (now - p.born) / 500);
+      fluid.stamp(p.c, breatheRect(p.geom, now, amp, T, p.phase), rgb, k, { erase: true, target: ink });
+    }
   }
 
   // Lab: the water surface is poked now and then so it is never glass, and
@@ -394,7 +450,7 @@ export function createInkRenderer({ params }) {
       stays = true;
     }
     glyph = { number, seed, mode, revealMs, dissip, stays, seconds };
-    painter.begin({ number, box: promptBox(), seed, rgb: coreRgb() });
+    painter.begin({ number, box: promptBox(), seed, rgb: coreRgb(), figure: figureKind() });
     phase = 'paint';
     phaseStart = performance.now();
   }
@@ -414,10 +470,15 @@ export function createInkRenderer({ params }) {
       number, box: promptBox(), seed: number + 1, rgb: coreRgb(),
       traceMs: Math.min(params.get('countCTrace'), periodMs * 0.9),
       inkScale: params.get('countCInk'),
+      figure: figureKind(),
     });
     phase = 'paint';
     phaseStart = performance.now();
   }
+
+  // Lab: the ring-stave numeral stands in for the Cistercian wherever the
+  // growth painter draws (the ∞/⧖ prompt and the left counter).
+  function figureKind() { return params.get('glyphMix') >= 1 ? 'ringstave' : 'cistercian'; }
 
   function clearPrompt({ reason }) {
     if (reason === 'reveal') return; // the dye is its own clock
@@ -609,6 +670,8 @@ export function createInkRenderer({ params }) {
       els.play.hidden = (name !== 'play');
       els.gameover.hidden = (name !== 'gameover');
       if (els.count) els.count.hidden = (name !== 'count');
+      if (name === 'gameover') resultPending = true;
+      else { resultPins = []; els.gameover.classList.remove('ink-only'); }
     },
 
     startRun({ mode, totalMs }) {
@@ -760,6 +823,7 @@ export function createInkRenderer({ params }) {
     },
 
     teardown() {
+      resultPins = []; resultPending = false;
       painter.cancel();
       glyph = null;
       phase = 'idle';

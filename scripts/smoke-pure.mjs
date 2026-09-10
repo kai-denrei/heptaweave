@@ -224,6 +224,33 @@ console.log('growth front');
 // ---------------------------------------------------------------------------
 // band layout
 // ---------------------------------------------------------------------------
+console.log('ring stave');
+{
+  const { ringStaveGrowthPx } = await import('../src/cistercian/ringStave.js');
+  let finite = true, monotone = true, inside = true, sixSeeded = true;
+  for (let n = 0; n <= 9999; n += 13) {
+    const { paths, maxD } = ringStaveGrowthPx({ number: n, size: 300, padFrac: 0.1 });
+    if (!(maxD > 0)) finite = false;
+    for (const p of paths) {
+      for (const q of p.points) {
+        if (!Number.isFinite(q.d) || q.d < 0) finite = false;
+        if (q.x < -1 || q.y < -1 || q.x > 301 || q.y > 301) inside = false;
+      }
+      const md = Math.min(...p.points.map(q => q.d));
+      if (p.points[0].d > md + 1e-9 && p.points[p.points.length - 1].d > md + 1e-9) monotone = false;
+    }
+    const digits = [Math.floor(n / 1000) % 10, Math.floor(n / 100) % 10, Math.floor(n / 10) % 10, n % 10];
+    const seeded = paths.filter(p => p.seeded).length;
+    if (seeded !== 2 * digits.filter(d => d === 6).length) sixSeeded = false;
+  }
+  ok('every point has a finite, non-negative distance', finite);
+  ok('every path starts its front at an endpoint', monotone);
+  ok('the figure stays inside its cell', inside);
+  ok('digit 6 (and only 6) grows from its own seed', sixSeeded);
+  const zero = ringStaveGrowthPx({ number: 0, size: 300 });
+  ok('0 is the ring and four bare stems', zero.paths.length === 6);
+}
+
 console.log('band layout');
 {
   const { layoutBands } = await import('../src/render/ink/bandLayout.js');
