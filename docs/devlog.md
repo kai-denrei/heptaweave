@@ -3,6 +3,13 @@
 Newest at top. Alternatives we chose *not* to build yet live here so they
 can be picked up later without re-deriving them.
 
+## 2026-09-10 — the logogram counter becomes diegetic
+
+Lines are permanent ink; drops land on them (300 ms, a ripple where they hit)
+and are released to dissolve when the Morse pattern loses that dot. One slot
+changes per beat; nothing else is restamped. Per-source mask textures in the
+fluid make the ~30 pins a frame cheap.
+
 ## 2026-09-10 — inverted water becomes the default; result in ink; ring-stave glyph in the lab
 
 Inverted + ripples are now the look. The game-over trinity is rasterised and

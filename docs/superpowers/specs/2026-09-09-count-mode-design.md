@@ -143,6 +143,29 @@ the same ink slightly hovering." `inverted` and `surface` default to 1.
   `figure` and both the ∞/⧖ prompt and the left counter draw it when the
   switch is on.
 
+## Logogram counter, diegetic pass (2026-09-10)
+
+Operator: "we are always either ADDING a drop, or one is fading, or both …
+1 to 5 we ADD, 6 to 9 we fade … nothing else should be refreshed
+aggressively … no ripple effects when a number disappears, but a small
+ripple effect when a new drop of ink is added." Confirmed: the line under a
+landing drop need not dissolve (same hue, the drop overpowers it); drops land
+in ~300 ms, a released drop fades over the second.
+
+- The logogram's digits are five fixed Morse slots per lobe. **Lines are
+  permanent**: every lobe always carries its digit-0 marks, pinned. **Drops**
+  are ink added on top of a line wherever the digit's pattern has a dot;
+  when the pattern loses that dot the drop is released and dissolves on the
+  `countLife` clock, and the line beneath is simply still there.
+- Layers: ring, one line layer per place (from digit 0), one drop layer per
+  place × slot (from 5555, the all-drops numeral) — shapes fixed by
+  construction, so a mark that stays is the same ink throughout. A beat is a
+  diff of slots: a new dot → the drop soaks in over `countTrace` with a
+  small ripple at the mark's centre (`rippleTouch` × 0.5); a lost dot → the
+  drop is unpinned. Nothing else is stamped.
+- `fluid.stamp` keeps one mask texture per source canvas (LRU, 64), so
+  pinning ~30 layers a frame is ~30 draws, not ~30 uploads.
+
 ## Logogram counter, second pass (2026-09-10)
 
 Operator: "I like the size and disappearing motions of the Cistercian much

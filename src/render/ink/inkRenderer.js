@@ -32,6 +32,7 @@
 
 import { createRng } from '../../util/rng.js';
 import { renderHeptapodNumeralV2 } from '../../heptacipher/numeralV2.js';
+import { PATTERNS } from '../../heptacipher/morsePatterns.js';
 import { renderCistercianInk } from '../../cistercian/cistercianInk.js';
 import { renderBinaryScore } from '../binaryScore.js';
 import { renderGameOverDot } from '../gameOverDot.js';
@@ -74,7 +75,7 @@ export function createInkRenderer({ params }) {
   let resultPending = false; // stamp the result glyphs on the next frame after the screen shows
   let countToken = 0;
   let countKind = null;      // 'heptaweave' | 'cistercian' while on the count screen
-  // + mode layer cache: key → Promise<canvas>; geometry shared by all layers.
+  // + mode layer cache: key → Promise<{ c, centre }>; geometry shared by all layers.
   let countLayers = new Map();
   let countGeom = null;      // { rect, size }
   let countShown = null;     // digits currently on the water, or null
@@ -534,12 +535,32 @@ export function createInkRenderer({ params }) {
     const rect = countRect(now);
     if (countAnims.length) stepCountAnims(now, dt, rect);
     const rgb = coreRgb().map(c => c * 3);
-    if (!countAnims.some(a => a.place === -1)) fluid.stamp(countCurrent.ring.c, rect, rgb, pin, { erase: true, target: ink });
-    countCurrent.digits.forEach((l, i) => {
-      const a = countAnims.find(x => x.place === i);
-      if (!a) fluid.stamp(l.c, rect, rgb, pin, { erase: true, target: ink });
-      else if (a.shared) fluid.stamp(a.shared.c, rect, rgb, pin, { erase: true, target: ink });
-    });
+    const animating = new Set(countAnims.map(a => a.place));
+    if (!animating.has(-1)) fluid.stamp(countCurrent.ring.c, rect, rgb, pin, { erase: true, target: ink });
+    countCurrent.lines.forEach((l, i) => { if (!animating.has(`L${i}`)) fluid.stamp(l.c, rect, rgb, pin, { erase: true, target: ink }); });
+    for (const id of countCurrent.drops) {
+      if (animating.has(`D${id}`)) continue;
+      const [i, k] = id.split(':').map(Number);
+      const l = countLayerSync(`drop:${countGeom.size}:${i}:${k}`);
+      if (l) fluid.stamp(l.c, rect, rgb, pin, { erase: true, target: ink });
+    }
+  }
+  // Resolved layers, for the per-frame pin (the promise resolved long ago).
+  const countResolved = new Map();
+  function countLayerSync(key) {
+    if (countResolved.has(key)) return countResolved.get(key);
+    const p = countLayers.get(key);
+    if (p) p.then((l) => countResolved.set(key, l));
+    return null;
+  }
+  // A drop's landing ripple: the mark's centre, raster px → client px → uv.
+  function dropRipple(centre) {
+    if (params.get('surface') < 1 || !countGeom) return;
+    const g = countGeom;
+    const x = g.cx - g.w / 2 + (centre.x / g.rw) * g.w;
+    const y = g.cy - g.h / 2 + (centre.y / g.rh) * g.h;
+    const { u, v } = fluid.uvFromClient(x, y);
+    fluid.disturb(u, v, 0.012, params.get('rippleTouch') * 0.5);
   }
   // The new layer clipped to the wedge slice [ta, tb] of its angular span.
   function wedgeSlice(l, wg, ta, tb) {
@@ -676,7 +697,7 @@ export function createInkRenderer({ params }) {
 
     startRun({ mode, totalMs }) {
       run = { mode, timeRemainingMs: totalMs, totalMs };
-      countShown = null; countGeom = null; countAnims = []; countCurrent = null; countKind = null;
+      countShown = null; countGeom = null; countAnims = []; countCurrent = null; countKind = null; countResolved.clear();
       lastBitCount = 0;
       els.choices.replaceChildren();
       painter.cancel();
@@ -711,9 +732,14 @@ export function createInkRenderer({ params }) {
       const rgb = coreRgb().map(c => c * 3);
       const ink = params.get('countInk');
 
-      // One SVG per distinct digit set; layers are cut from it by hiding
-      // the other groups. A fixed seed + per-lobe rng streams make a digit's
-      // marks depend only on its place and value, so layers cache by key.
+      // The logogram as a diegetic figure. Every lobe always carries its five
+      // LINES (the digit-0 marks), pinned for good. A DROP is ink added on top
+      // of a line wherever the digit's pattern has a dot; when the pattern
+      // loses that dot the drop is released and dissolves, and the line it
+      // sat on is simply still there. Counting is one slot changing per beat.
+      // Layers: ring, one line layer per place (from digit 0), one drop layer
+      // per place × slot (from digit 5, the all-dots digit) — shapes fixed by
+      // construction, so a mark that stays is the same ink the whole time.
       const svgFor = (num) => {
         const svg = renderHeptapodNumeralV2({
           number: num, size, seed: 0xc0ffee,
@@ -723,41 +749,40 @@ export function createInkRenderer({ params }) {
         svg.setAttribute('color', '#fff');
         return svg;
       };
-      // A layer is { c: canvas, box: lobe bounds in raster px | null,
-      // centre: ring centre in raster px }. The bbox comes from a temporary
-      // DOM attach (getBBox needs layout); raster px = 2 × user units + pad.
-      const layer = (key, hide, place = -1) => {
+      // A layer is { c: canvas, centre: {x,y} raster px of the mark (drops) or
+      // of the ring }. Raster px = user units × COUNT_RASTER (pad is 0).
+      const layer = (key, num, hide, markSel = null) => {
         if (!countLayers.has(key)) {
-          const svg = svgFor(n);
+          const svg = svgFor(num);
           for (const el of svg.querySelectorAll(hide)) el.setAttribute('display', 'none');
-          let box = null;
           const vb = (svg.getAttribute('viewBox') || '0 0 1 1').split(/\s+/).map(Number);
-          const vbSize = Number(svg.getAttribute('width')) || 1;
           const toRaster = (u) => (u - vb[0]) * COUNT_RASTER;
-          if (place >= 0) {
+          let centre = { x: toRaster(size / 2), y: toRaster(size / 2) };
+          if (markSel) {
             els.countStage.appendChild(svg);
             try {
-              const g = svg.querySelector(`.ink-crisp .lobe[data-place="${place}"]`);
-              const b = g ? g.getBBox() : null;
-              if (b && b.width > 0 && b.height > 0) {
-                box = { x: toRaster(b.x), y: toRaster(b.y), w: b.width * COUNT_RASTER, h: b.height * COUNT_RASTER };
-              }
+              const b = svg.querySelector(markSel)?.getBBox();
+              if (b && b.width > 0) centre = { x: toRaster(b.x + b.width / 2), y: toRaster(b.y + b.height / 2) };
             } catch {}
             svg.remove();
           }
-          const centre = { x: toRaster(size / 2), y: toRaster(size / 2) };
-          countLayers.set(key, rasterizeSvg(svg, COUNT_RASTER).then((c) => ({ c, box, centre })));
+          countLayers.set(key, rasterizeSvg(svg, COUNT_RASTER).then((c) => ({ c, centre })));
         }
         return countLayers.get(key);
       };
-      const ringP = layer(`ring:${size}`, '.lobe');
-      const digitP = digits.map((d, i) => layer(`d:${size}:${i}:${d}`, `.enso, .wet-drop, .lobe:not([data-place="${i}"])`, i));
+      const lobeOnly = (i) => `.enso, .wet-drop, .lobe:not([data-place="${i}"])`;
+      const ringP = layer(`ring:${size}`, 0, '.lobe');
+      const lineP = [0, 1, 2, 3].map(i => layer(`lines:${size}:${i}`, 0, lobeOnly(i)));
+      // Digit 5 puts a drop in every slot of every place: 5555.
+      const dropP = [];
+      for (let i = 0; i < 4; i++) for (let k = 0; k < 5; k++) {
+        dropP.push(layer(`drop:${size}:${i}:${k}`, 5555, `${lobeOnly(i)}, .lobe[data-place="${i}"] path:not(:nth-of-type(${k + 1}))`, `.ink-crisp .lobe[data-place="${i}"] path:nth-of-type(${k + 1})`));
+      }
       const prev = countShown;
-      const prevP = prev ? prev.map((d, i) => (d === digits[i]) ? null : layer(`d:${size}:${i}:${d}`, `.enso, .wet-drop, .lobe:not([data-place="${i}"])`, i)) : [];
 
-      Promise.all([ringP, ...digitP, ...prevP]).then(([ring, ...rest]) => {
+      Promise.all([ringP, ...lineP, ...dropP]).then(([ring, ...rest]) => {
         if (token !== countToken || screen !== 'count') return;
-        const news = rest.slice(0, 4), olds = rest.slice(4);
+        const lines = rest.slice(0, 4), drops = rest.slice(4);
         // Geometry from the ring: the ink box scales to `countSize` of the
         // short side; every layer shares the raster size so one rect fits all.
         if (!countGeom || countGeom.size !== size) {
@@ -766,33 +791,41 @@ export function createInkRenderer({ params }) {
           const k = (short * params.get('countSize')) / Math.max(bb.w, bb.h);
           const w = ring.c.width * k, h = ring.c.height * k;
           const cx = stage.left + stage.width / 2, cy = stage.top + stage.height / 2;
-          // Client-space centre of the raster and its size; the breathing
-          // anchor scales and drifts this each frame (see countRect()).
-          countGeom = { size, cx: cx - (bb.x + bb.w / 2 - ring.c.width / 2) * k, cy: cy - (bb.y + bb.h / 2 - ring.c.height / 2) * k, w, h };
+          countGeom = { size, cx: cx - (bb.x + bb.w / 2 - ring.c.width / 2) * k, cy: cy - (bb.y + bb.h / 2 - ring.c.height / 2) * k, w, h, rw: ring.c.width, rh: ring.c.height };
         }
         const traceMs = Math.min(params.get('countTrace'), periodMs * 0.9);
         const grow = params.get('countReveal') >= 1;
-        const startAnim = (place, neu, shared, wedge, ms) => {
+        const wanted = digits.map(d => PATTERNS[d]);
+        const dropAt = (i, k) => drops[i * 5 + k];
+        const startAnim = (place, neu, wedge, ms) => {
           const running = countAnims.findIndex(a => a.place === place);
           if (running >= 0) { finishCountAnim(countAnims[running]); countAnims.splice(running, 1); }
-          countAnims.push({ place, neu, shared, rgb, ink, wedge, start: performance.now(), traceMs: ms, lastT: 0 });
+          countAnims.push({ place, neu, rgb, ink, wedge, start: performance.now(), traceMs: ms, lastT: 0 });
         };
-        countCurrent = { ring, digits: news.slice() };
         if (!prev) {
-          // Entry: the ring sweeps round once (place −1), the digits grow in.
+          // Entry: the ring sweeps round once, every line and every wanted
+          // drop soaks in over the trace time. No ripples — nothing "lands".
+          countCurrent = { ring, lines, drops: new Set() };
           const c = ring.centre;
-          startAnim(-1, ring, null, grow ? { cx: c.x, cy: c.y, a0: -Math.PI / 2, a1: Math.PI * 1.5, R: Math.hypot(ring.c.width, ring.c.height) } : null, traceMs * 2);
-          news.forEach((l, i) => startAnim(i, l, null, grow ? wedgeFor(l) : null, traceMs));
+          startAnim(-1, ring, grow ? { cx: c.x, cy: c.y, a0: -Math.PI / 2, a1: Math.PI * 1.5, R: Math.hypot(ring.c.width, ring.c.height) } : null, traceMs * 2);
+          lines.forEach((l, i) => startAnim(`L${i}`, l, null, traceMs));
+          wanted.forEach((pat, i) => pat.forEach((m, k) => { if (m === '.') { countCurrent.drops.add(`${i}:${k}`); startAnim(`D${i}:${k}`, dropAt(i, k), null, traceMs); } }));
         } else {
-          digits.forEach((d, i) => {
-            if (d === prev[i]) return;
-            // The old marks are unpinned from here on and dissolve like a
-            // Cistercian glyph; marks both digits share stay pinned; the new
-            // marks sweep in over `countTrace` and are pinned once landed.
-            const fresh = olds[i] ? { ...news[i], c: dilate(news[i].c, 0, olds[i].c) } : news[i];
-            const shared = olds[i] ? { ...news[i], c: dilate(news[i].c, 0, fresh.c) } : null;
-            startAnim(i, fresh, shared, grow ? wedgeFor(news[i]) : null, traceMs);
-          });
+          wanted.forEach((pat, i) => pat.forEach((m, k) => {
+            const id = `${i}:${k}`;
+            const had = countCurrent.drops.has(id);
+            if (m === '.' && !had) {
+              // A drop lands: fast, with a small ripple where it hits.
+              countCurrent.drops.add(id);
+              startAnim(`D${id}`, dropAt(i, k), null, traceMs);
+              dropRipple(dropAt(i, k).centre);
+            } else if (m === '-' && had) {
+              // Released: it fades on the clock; the line beneath stays.
+              countCurrent.drops.delete(id);
+              const running = countAnims.findIndex(a => a.place === `D${id}`);
+              if (running >= 0) countAnims.splice(running, 1);
+            }
+          }));
         }
         countShown = digits;
       }).catch((err) => {
@@ -852,33 +885,6 @@ function rasterizeSvg(svg, scale = 1) {
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('svg raster failed')); };
     img.src = url;
   });
-}
-
-// A copy of `c` with its alpha grown by `r` px in eight directions, so an
-// erase covers ink that drifted a little since it was stamped; `keep` (the
-// ring layer) is punched out so the erase never notches the ring.
-function dilate(c, r, ...keeps) {
-  const out = document.createElement('canvas');
-  out.width = c.width; out.height = c.height;
-  const ctx = out.getContext('2d');
-  ctx.drawImage(c, 0, 0);
-  if (r > 0) {
-    for (let a = 0; a < 8; a++) {
-      const t = (a / 8) * Math.PI * 2;
-      ctx.drawImage(c, Math.cos(t) * r, Math.sin(t) * r);
-    }
-    for (let a = 0; a < 8; a++) {
-      const t = ((a + 0.5) / 8) * Math.PI * 2;
-      ctx.drawImage(c, Math.cos(t) * r * 0.5, Math.sin(t) * r * 0.5);
-    }
-  }
-  for (const keep of keeps) {
-    if (!keep) continue;
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.drawImage(keep, 0, 0);
-  }
-  ctx.globalCompositeOperation = 'source-over';
-  return out;
 }
 
 // Bounding box of the non-transparent pixels of a canvas, in canvas px.

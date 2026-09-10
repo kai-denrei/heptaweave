@@ -300,30 +300,45 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     if (cfg.surface) wave(cfg);
   }
 
-  // Mask texture for `stamp()`; re-uploaded per call.
-  const maskTex = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, maskTex);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  // Mask textures for `stamp()`: one per source canvas, uploaded once and
+  // kept (LRU-capped), so pinning thirty layers a frame costs thirty draws,
+  // not thirty uploads. A `version` change re-uploads into the same slot.
+  const MASK_CAP = 64;
+  const masks = new Map(); // source → { tex, version }
+  function maskFor(source, version) {
+    let m = masks.get(source);
+    if (m) { masks.delete(source); masks.set(source, m); } // refresh LRU order
+    if (!m) {
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      m = { tex, version: -1 };
+      masks.set(source, m);
+      if (masks.size > MASK_CAP) {
+        const [oldSrc, old] = masks.entries().next().value;
+        gl.deleteTexture(old.tex); masks.delete(oldSrc);
+      }
+    }
+    gl.bindTexture(gl.TEXTURE_2D, m.tex);
+    if (m.version !== version) {
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      m.version = version;
+    }
+    return m.tex;
+  }
 
   /**
    * Add a rasterised shape (a canvas/image whose alpha is the mask) into the
    * dye in one pass. `rect` is { u, v, w, h } in uv with v bottom-up — see
    * `rectFromClient`.
    */
-  let maskLast = { source: null, version: -1 };
   function stamp(source, rect, rgb, amount, { erase = false, target = 0, version = 0 } = {}) {
-    gl.bindTexture(gl.TEXTURE_2D, maskTex);
-    // Re-upload only when the mask changed: a static erase mask is stamped
-    // every frame for a second, a wedge slice changes every frame.
-    if (maskLast.source !== source || maskLast.version !== version) {
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-      maskLast = { source, version };
-    }
+    const maskTex = maskFor(source, version);
     gl.disable(gl.BLEND);
     gl.useProgram(progStamp.p);
     gl.bindFramebuffer(gl.FRAMEBUFFER, dye.write.fbo);
@@ -470,7 +485,8 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
       if (height) height.free();
       freeTarget(pre); freeTarget(bloomA); freeTarget(bloomB);
       gl.deleteTexture(lutTex);
-      gl.deleteTexture(maskTex);
+      for (const m of masks.values()) gl.deleteTexture(m.tex);
+      masks.clear();
       gl.deleteBuffer(quad);
       for (const p of [progAdvect, progSplat, progStamp, progDiffuse, progWave, progDisturb, progPre, progBlur, progDisplay]) gl.deleteProgram(p.p);
     },

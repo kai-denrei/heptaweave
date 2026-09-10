@@ -74,6 +74,7 @@ Blocked by:
 Feeds into: [[arch]], [[dev]], [[design]]
 
 ## Session Log
+- 2026-09-10 (diegetic counter) — operator paraphrase-then-build worked; lines permanent, drops land/leave.
 - 2026-09-10 (default look) — inverted + ripples default; result in ink; ring-stave glyph behind `glyphMix`.
 - 2026-09-10 (deep links) — countup1 = left, countup2 = right (reading order; unconfirmed). A third glyph system (ring + radial stems, Cistercian digit logic) proposed as a design sheet, not built.
 - 2026-09-09 (left +) — Cistercian counter shipped; life 0.9 s rather than the tier's 5 s, by necessity of the cadence.
