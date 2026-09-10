@@ -6,7 +6,8 @@
 // waits real seconds, and saves PNGs.
 //
 // Usage: node scripts/ink-cdp-shots.mjs <outDir> [mode=ENDLESS] [hash=p=...]
-//   Requires the dev server on :8765 and Node ≥ 22 (built-in WebSocket).
+//   Requires the dev server (default :8765, override with DEV_PORT=8766) and
+//   Node ≥ 22 (built-in WebSocket).
 
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -14,6 +15,7 @@ import { join } from 'node:path';
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const PORT = 9333;
+const DEV_PORT = Number(process.env.DEV_PORT) || 8765;
 const outDir = process.argv[2] || '.';
 const mode = process.argv[3] || 'ENDLESS';
 const hash = process.argv[4] || '';
@@ -67,7 +69,7 @@ async function shot(name) {
 
 await send('Page.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: 420, height: 920, deviceScaleFactor: 1, mobile: true });
-await send('Page.navigate', { url: `http://localhost:8765/index.html${hash ? '#' + hash : ''}` });
+await send('Page.navigate', { url: `http://localhost:${DEV_PORT}/index.html${hash ? '#' + hash : ''}` });
 await sleep(1200);
 await shot('00-landing.png');
 await evaluate(`document.querySelector('.mode-btn[data-mode="${mode}"]').click(); 'ok'`);
