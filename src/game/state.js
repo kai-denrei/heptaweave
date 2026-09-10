@@ -30,6 +30,7 @@ export const MODE = Object.freeze({
   ENDLESS: 'ENDLESS', // ∞
   COUNT: 'COUNT', // + (right): heptaweave logogram
   COUNT_C: 'COUNT_C', // + (left): Cistercian glyph
+  COUNT_R: 'COUNT_R', // ◎ (top right): ring-stave glyph
 });
 
 export function createStore(initial) {

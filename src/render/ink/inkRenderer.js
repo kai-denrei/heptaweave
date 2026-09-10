@@ -151,7 +151,7 @@ export function createInkRenderer({ params }) {
   function stepConfig(now) {
     const cfg = baseFlow();
     const diffuse = params.get('diffuse');
-    if (screen === 'count' && countKind === 'cistercian') {
+    if (screen === 'count' && countKind !== 'heptaweave') {
       // Everything on the water shares one clock; the current keeps running
       // while the next glyph is traced so the last one goes on dissolving.
       cfg.dissip = glyph ? glyph.dissip : params.get('idleDissip');
@@ -460,7 +460,7 @@ export function createInkRenderer({ params }) {
   // `countCLife` seconds. Same painter and phases as the ∞ prompt, but with a
   // per-glyph tempo and no freeze, so the previous glyph keeps dissolving
   // under the new one and the stems never stack into a bright bar.
-  function paintCountGlyph(number, periodMs) {
+  function paintCountGlyph(number, periodMs, figure = figureKind()) {
     const life = params.get('countCLife');
     const dissip = dissipFor(life, params.get('dissolveFloor'));
     glyph = {
@@ -471,7 +471,7 @@ export function createInkRenderer({ params }) {
       number, box: promptBox(), seed: number + 1, rgb: coreRgb(),
       traceMs: Math.min(params.get('countCTrace'), periodMs * 0.9),
       inkScale: params.get('countCInk'),
-      figure: figureKind(),
+      figure,
     });
     phase = 'paint';
     phaseStart = performance.now();
@@ -723,7 +723,7 @@ export function createInkRenderer({ params }) {
       if (!els.countStage || !fluid.ok) return;
       const n = Math.max(0, value | 0) % 10000;
       countKind = kind;
-      if (kind === 'cistercian') { paintCountGlyph(n, periodMs); return; }
+      if (kind !== 'heptaweave') { paintCountGlyph(n, periodMs, kind === 'ringstave' ? 'ringstave' : figureKind()); return; }
       const digits = [Math.floor(n / 1000) % 10, Math.floor(n / 100) % 10, Math.floor(n / 10) % 10, n % 10];
       const stage = els.countStage.getBoundingClientRect();
       const short = Math.min(stage.width, stage.height);

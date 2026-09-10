@@ -49,6 +49,20 @@ export const MODE_CONFIG = {
     wrapAt: 100_000_000,
     deepLink: 'countup1',
   },
+  // The top-right emblem: the same counter drawn with the ring-stave numeral
+  // (the Cistercian × heptaweave glyph), eight places.
+  [MODE.COUNT_R]: {
+    symbol: '◎',
+    initialTimeMs: 0,
+    penaltyMs: 0,
+    endOnError: false,
+    showTimerRing: false,
+    counter: true,
+    glyph: 'ringstave',
+    periodMs: 1000,
+    wrapAt: 100_000_000,
+    deepLink: 'countup3',
+  },
 };
 
 /**

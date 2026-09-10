@@ -21,7 +21,7 @@
 //   tick({ dt, mode, phase, timeRemainingMs, totalMs })  — every frame in play
 //   showGameOver({ mode, score, errors, clean })
 //   renderCount({ value, periodMs, glyph })  — a + mode's number changed;
-//                                glyph is 'heptaweave' | 'cistercian'
+//                                glyph is 'heptaweave' | 'cistercian' | 'ringstave'
 //   teardown()
 //
 //   delays: { correct, wrongContinue, wrongEnd } — ms main.js waits after a

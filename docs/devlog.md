@@ -3,6 +3,12 @@
 Newest at top. Alternatives we chose *not* to build yet live here so they
 can be picked up later without re-deriving them.
 
+## 2026-09-10 — ◎ the ring-stave counter
+
+The new glyph gets its own door: a medium emblem of itself at the landing's
+top right opens `COUNT_R`, the count-up drawn with the ring-stave numeral
+(deep link `#countup3`). PoC for the glyph as an alternative system.
+
 ## 2026-09-10 — ring-stave numeral, rev 3
 
 Opening at the bottom. Thin end bottom-right = units, thick end bottom-left =

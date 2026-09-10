@@ -151,6 +151,18 @@ the same ink slightly hovering." `inverted` and `surface` default to 1.
   `figure` and both the ∞/⧖ prompt and the left counter draw it when the
   switch is on.
 
+## ◎ the ring-stave counter (`MODE.COUNT_R`, 2026-09-10)
+
+Operator: "now we develop the new glyph as an alternative, and we put it on the
+main page medium top right as a simplified glyph of itself, clickable." PoC:
+
+- A 72 px emblem at the landing's top right: the ring-stave numeral for 12
+  (ribbon ring thin→thick, a tip bar on the units slot, a foot bar on the
+  tens slot), inline SVG in `currentColor`. Tapping it starts `COUNT_R`.
+- `COUNT_R` is the Cistercian counter's pipeline with `figure: 'ringstave'`
+  forced (independent of the lab switch), eight places, wrap 10^8, deep
+  link `#countup3` (with `t=`), same hold-to-leave, same `countC` tuning.
+
 ## Logogram counter, diegetic pass (2026-09-10)
 
 Operator: "we are always either ADDING a drop, or one is fading, or both …
