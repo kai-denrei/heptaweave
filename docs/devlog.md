@@ -3,6 +3,15 @@
 Newest at top. Alternatives we chose *not* to build yet live here so they
 can be picked up later without re-deriving them.
 
+## 2026-09-10 — lab: inverted ground, water surface
+
+Behind an invisible gear top-right. `inverted` is a second composition branch
+in the display shader (ink subtracts light from a pale ground). `surface` is a
+GPU port of the koi pond's two-buffer wave equation: height field at half sim
+resolution, gradient refracts everything beneath and lights the crests, poked
+by touch and by an ambient timer. First look: black Cistercian on rippling
+paper-water. Not yet a theme; a lab switch.
+
 ## 2026-09-09 — + count modes (right: logogram, left: Cistercian)
 
 Spec: `docs/superpowers/specs/2026-09-09-count-mode-design.md`.

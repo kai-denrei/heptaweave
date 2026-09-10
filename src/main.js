@@ -13,7 +13,7 @@
 import { createRng } from './util/rng.js';
 import { buildRound } from './game/round.js';
 import { MODE, PHASE, createStore } from './game/state.js';
-import { MODE_CONFIG, isCleanResult, modeFromHash } from './game/modes.js';
+import { MODE_CONFIG, isCleanResult, deepLinkFromHash } from './game/modes.js';
 
 // ============================================================================
 // Persistence helpers
@@ -266,7 +266,7 @@ export function boot({ renderer, params = null, onCornerHold = null, hash = '' }
       awaiting: false,
       phase: PHASE.ROUND_INIT,
     });
-    if (MODE_CONFIG[mode]?.counter) { startCount(mode); return; }
+    if (MODE_CONFIG[mode]?.counter) { startCount(mode, startGame.startedAt ?? null); startGame.startedAt = null; return; }
     renderer.startRun({ mode, totalMs: initialTimeMs });
     renderer.renderScore({ score: 0, animateNewBit: false });
     renderer.showScreen('play');
@@ -279,15 +279,20 @@ export function boot({ renderer, params = null, onCornerHold = null, hash = '' }
   // The + mode: no rounds. A value that increments every `periodMs` from
   // zero and wraps at `wrapAt`; the renderer is told each time it changes.
   // Leaving is the renderer's hold gesture → backToLanding.
-  let countStart = 0;
-  function startCount(mode) {
+  let countStart = 0;       // performance.now() at which the count read 0
+  let countEpoch = 0;       // the same instant as a Unix ms epoch (for links)
+  function startCount(mode, startedAt = null) {
     const cfg = MODE_CONFIG[mode];
-    countStart = performance.now();
-    store.set({ phase: PHASE.COUNT, count: 0 });
+    const now = performance.now();
+    // A deep link with `t=` resumes the count that was started then.
+    countEpoch = (startedAt && startedAt <= Date.now()) ? startedAt : Date.now();
+    countStart = now - (Date.now() - countEpoch);
+    const value = Math.floor((now - countStart) / cfg.periodMs) % cfg.wrapAt;
+    store.set({ phase: PHASE.COUNT, count: value });
     renderer.startRun({ mode, totalMs: 0 });
     renderer.showScreen('count');
-    renderer.renderCount({ value: 0, periodMs: cfg.periodMs, glyph: cfg.glyph });
-    lastTick = countStart;
+    renderer.renderCount({ value, periodMs: cfg.periodMs, glyph: cfg.glyph });
+    lastTick = now;
     if (rafId) cancelAnimationFrame(rafId);
     loop();
   }
@@ -349,7 +354,9 @@ export function boot({ renderer, params = null, onCornerHold = null, hash = '' }
     const s = store.get();
     const url = new URL(location.href);
     const link = (s.phase !== PHASE.LANDING && s.mode) ? MODE_CONFIG[s.mode]?.deepLink : null;
-    url.hash = link ? `#${link}` : '';
+    // A running count links to its start instant, so the recipient sees the
+    // same number ticking, not a fresh zero.
+    url.hash = link ? `#${link}${s.phase === PHASE.COUNT ? `&t=${countEpoch}` : ''}` : '';
     return url.toString();
   }
   async function copyLink() {
@@ -372,8 +379,8 @@ export function boot({ renderer, params = null, onCornerHold = null, hash = '' }
   wireInstallAffordance();
   renderer.showScreen('landing');
 
-  const linked = modeFromHash(hash);
-  if (linked && renderer.ok !== false) startGame(linked);
+  const linked = deepLinkFromHash(hash);
+  if (linked && renderer.ok !== false) { startGame.startedAt = linked.startedAt; startGame(linked.mode); }
 
   return { store, startGame, backToLanding, deepLinkUrl };
 }

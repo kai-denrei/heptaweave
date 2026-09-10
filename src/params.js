@@ -82,6 +82,14 @@ export const SCHEMA = [
   ['countC', 'countCFlow',    'current ×',            0,     3,    0.05,  1.2],
   ['countC', 'countCInk',     'stroke ink ×',         0.2,   1.5,  0.05,  0.8],
 
+  // ---- lab: experiments behind the hidden gear (top-right) ----------------
+  ['lab', 'inverted',      'inverted: black ink, clear ground', 0, 1, 1, 0],
+  ['lab', 'surface',       'water surface (ripples)', 0,   1,    1,     0],
+  ['lab', 'rippleRefract', 'ripple refraction',    0,     3,    0.05,  1],
+  ['lab', 'rippleDamp',    'ripple damping',       0.95,  0.999, 0.001, 0.986],
+  ['lab', 'rippleAmbient', 'ambient ripples / min', 0,    60,   1,     12],
+  ['lab', 'rippleTouch',   'touch ripple',         0,     2,    0.05,  0.6],
+
   // ---- rules: test-mode overrides (−1 / 0 = use the table) --------------
   ['rules', 'pinTier',        'pin tier (−1 = off)',  -1,    9,    1,     -1],
   ['rules', 'choiceCount',    'choices (0 = table)',  0,     7,    1,     0],

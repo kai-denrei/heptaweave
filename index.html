@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
 
   <!-- PWA. theme_color is the dark stage: the ink theme is the default app. -->
-  <link rel="manifest" href="manifest.webmanifest?v=a33b8f5c" />
+  <link rel="manifest" href="manifest.webmanifest?v=858f8575" />
   <meta name="theme-color" content="#08090d" />
-  <link rel="apple-touch-icon" href="icon-180.png?v=a33b8f5c" />
+  <link rel="apple-touch-icon" href="icon-180.png?v=858f8575" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="heptaweave" />
@@ -18,8 +18,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="cb" content="a33b8f5c" />
-  <link rel="icon" type="image/svg+xml" href="public/cb-shapes/35.svg?v=a33b8f5c" />
+  <meta name="cb" content="858f8575" />
+  <link rel="icon" type="image/svg+xml" href="public/cb-shapes/05.svg?v=858f8575" />
 
   <style>
     :root {
@@ -89,6 +89,39 @@
       opacity: 0; transition: opacity 200ms;
     }
     .deep-link.flash { opacity: 0.7; transition: none; }
+
+    /* ⚙ lab gear: the deep-link's twin in the top-right. Invisible, tappable. */
+    .lab-gear {
+      position: fixed; right: max(4px, env(safe-area-inset-right)); top: max(4px, env(safe-area-inset-top));
+      width: 48px; height: 48px; z-index: 5;
+      background: transparent; border: none; padding: 0; cursor: pointer;
+      color: var(--ink); font: 400 22px/48px ui-serif, serif; text-align: center; opacity: 0;
+    }
+    .lab-modal {
+      position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
+      background: rgba(0, 0, 0, 0.45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    }
+    .lab-modal[hidden] { display: none; }
+    .lab-card {
+      width: min(92vw, 380px); max-height: 80vh; overflow-y: auto;
+      background: rgba(16, 18, 26, 0.96); color: var(--ink); border: 1px solid var(--hair); border-radius: 14px;
+      font: 14px/1.4 -apple-system, system-ui, sans-serif; padding: 14px 16px 12px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    }
+    .lab-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; }
+    .lab-close { background: transparent; border: none; color: var(--dim); font: inherit; font-size: 16px; cursor: pointer; padding: 6px; }
+    .lab-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--hair); }
+    .lab-row:first-child { border-top: none; }
+    .lab-label { grid-column: 1; }
+    .lab-val { grid-column: 2; grid-row: 1; color: var(--dim); font-variant-numeric: tabular-nums; }
+    .lab-row input[type="checkbox"] { grid-column: 2; grid-row: 1; width: 22px; height: 22px; accent-color: var(--ink); margin: 0; }
+    .lab-row input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 4px 0 0; }
+    .lab-foot { font-size: 11px; color: var(--dim); margin-top: 8px; }
+    /* inverted: black ink on a clear ground. The fluid flips in the shader;
+       the overlays flip here. */
+    body.inverted { --ink: #15141a; --glow: rgba(20, 20, 30, 0.22); --dim: #6d6a78; --hair: rgba(0, 0, 0, 0.12); }
+    body.inverted .lab-card, body.inverted .admin-sheet { background: rgba(245, 243, 238, 0.96); }
+    body.inverted .lab-modal { background: rgba(255, 255, 255, 0.35); }
 
     /* ====== COUNT ====== */
     .count { display: flex; align-items: center; justify-content: center; }
@@ -316,6 +349,7 @@
   <canvas id="stage"></canvas>
   <div class="app">
     <button class="deep-link" id="deepLink" type="button" aria-label="copy link" tabindex="-1">⧉</button>
+    <button class="lab-gear" id="labGear" type="button" aria-label="lab" tabindex="-1">⚙</button>
 
     <section class="screen landing" id="screenLanding">
       <button class="mode-btn" data-mode="TIMED" aria-label="Timed mode">⧖</button>
@@ -412,11 +446,12 @@
     }
 
     const cb = document.querySelector('meta[name="cb"]')?.content || String(Date.now());
-    const [{ boot }, { createInkRenderer }, { createParams }, { createAdminPanel }] = await Promise.all([
+    const [{ boot }, { createInkRenderer }, { createParams }, { createAdminPanel }, { createLabModal }] = await Promise.all([
       import(`./src/main.js?v=${cb}`),
       import(`./src/render/ink/inkRenderer.js?v=${cb}`),
       import(`./src/params.js?v=${cb}`),
       import(`./src/test/adminPanel.js?v=${cb}`),
+      import(`./src/test/labModal.js?v=${cb}`),
     ]);
 
     const params = createParams({ hash: location.hash });
@@ -433,10 +468,15 @@
       for (const s of document.querySelectorAll('.screen')) s.hidden = true;
     } else {
       panel = createAdminPanel({ params, root: document.body });
+      const lab = createLabModal({ params, root: document.body });
+      const gear = document.getElementById('labGear');
+      gear.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+      gear.addEventListener('click', (ev) => { ev.stopPropagation(); lab.toggle(); });
+      if (/(^#|&)lab(&|$)/.test(location.hash)) lab.show();
       // #admin (or the legacy #test) opens the tuning sheet straight away;
       // so does a 1 s hold on the landing screen's bottom-right corner.
       if (/(^#|&)(admin|test)(&|$)/.test(location.hash)) panel.show();
-      window.heptaweave = { params, renderer, panel, app };
+      window.heptaweave = { params, renderer, panel, lab, app };
     }
   </script>
 </body>

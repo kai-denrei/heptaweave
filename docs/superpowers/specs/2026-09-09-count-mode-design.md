@@ -96,6 +96,31 @@ applied."
   mode's link, or the bare page URL on the landing). A successful copy flashes
   the glyph once; that is its only visible moment.
 
+### Start-time links (later 2026-09-10)
+
+Operator: "the deeplink only gets a general link, not a link DEEP into the
+actual countdown." The link now carries the count's start instant:
+`#countup2&t=<unix ms>`. `deepLinkFromHash()` parses it; `startCount()`
+resumes from that epoch (a future `t` is ignored), so the recipient sees the
+same number ticking. The landing still copies the bare page URL.
+
+## Lab (2026-09-10)
+
+An invisible ⚙ in the top-right corner (twin of the ⧉) opens a modal built
+from the `lab` param group (`src/test/labModal.js`): switches for 0/1 rows,
+sliders otherwise; values save with the other params. `#lab` opens it too.
+
+- `inverted`: black ink on a clear ground. The display shader composes a
+  `light` branch (pale sand/water ground, ink subtracts light, caustics
+  brighten the floor) and mixes it in by `u_invert`; `body.inverted` flips
+  the overlay CSS variables.
+- `surface`: a water surface after the koi pond's method — a two-buffer
+  wave-equation height field, on the GPU at half sim resolution
+  (`FRAG_WAVE`, `FRAG_DISTURB`). Its gradient refracts the dye and the floor
+  (`rippleRefract`) and lights the crests; `rippleDamp` is the decay; every
+  pointer-down on the stage pokes it (`rippleTouch`) and `rippleAmbient`
+  pokes it on its own so it is never glass. Zero cost when off.
+
 ## Logogram counter, second pass (2026-09-10)
 
 Operator: "I like the size and disappearing motions of the Cistercian much

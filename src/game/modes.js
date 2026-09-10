@@ -49,14 +49,23 @@ export const MODE_CONFIG = {
   },
 };
 
-/** The mode a `#hash` (e.g. '#countup1&admin') deep-links to, or null. */
-export function modeFromHash(hash) {
+/**
+ * What a `#hash` deep-links to: `{ mode, startedAt }` or null. `startedAt`
+ * is the count's start as a Unix ms epoch (`t=`), so the link opens into the
+ * running count, not just the mode. Composable with `admin` and `p=`.
+ */
+export function deepLinkFromHash(hash) {
   const parts = (hash || '').replace(/^#/, '').split('&');
-  for (const [mode, cfg] of Object.entries(MODE_CONFIG)) {
-    if (cfg.deepLink && parts.includes(cfg.deepLink)) return mode;
+  let mode = null;
+  for (const [m, cfg] of Object.entries(MODE_CONFIG)) {
+    if (cfg.deepLink && parts.includes(cfg.deepLink)) { mode = m; break; }
   }
-  return null;
+  if (!mode) return null;
+  const t = parts.find(p => p.startsWith('t='));
+  const startedAt = t ? Number(t.slice(2)) : NaN;
+  return { mode, startedAt: Number.isFinite(startedAt) && startedAt > 0 ? startedAt : null };
 }
+export function modeFromHash(hash) { return deepLinkFromHash(hash)?.mode ?? null; }
 
 export function isCleanResult({ mode, errors }) {
   // Clean = no errors during the run, regardless of how the run ended.

@@ -157,3 +157,4 @@ deban-sync commit landing now.
 2026-09-09 03:40 — SYNC — count: trickle keep-alive at a breathing anchor; no brightness steps. Roles: dev, design.
 2026-09-09 04:10 — SYNC — left + Cistercian counter (COUNT_C) via prompt pipeline with per-glyph tempo. Roles: pm, dev, design.
 2026-09-10 00:40 — SYNC — deep links (#countup1/#countup2, hidden ⧉), logogram counter pinned-ring rework. Roles: pm, dev, design.
+2026-09-10 02:10 — SYNC — start-time deep links, hidden lab gear + modal, inverted ground, GPU ripple surface. Roles: pm, dev, design.

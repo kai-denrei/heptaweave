@@ -69,6 +69,7 @@ export function createInkRenderer({ params }) {
   let screen = 'landing';
   let run = { mode: null, timeRemainingMs: 0, totalMs: 0 };
   let wispAcc = 0;
+  let rippleAcc = 0;         // lab: ambient ripple timer
   let countToken = 0;
   let countKind = null;      // 'heptaweave' | 'cistercian' while on the count screen
   // + mode layer cache: key → Promise<canvas>; geometry shared by all layers.
@@ -117,6 +118,8 @@ export function createInkRenderer({ params }) {
   // --------------------------------------------------------------------------
   function baseFlow() {
     return {
+      surface: params.get('surface') >= 1,
+      rippleDamp: params.get('rippleDamp'),
       flowScale: params.get('flowScale'),
       current: params.get('current'),
       curlE: params.get('filament'),
@@ -220,6 +223,7 @@ export function createInkRenderer({ params }) {
     }
 
     if (screen === 'count') countMaintain(now, dt);
+    if (params.get('surface') >= 1) ambientRipples(dt);
 
     fluid.render({
       bloomThreshold: params.get('bloomThreshold'),
@@ -229,7 +233,27 @@ export function createInkRenderer({ params }) {
       grain: params.get('grain'),
       vignette: params.get('vignette'),
       light: stageLight(),
+      surface: params.get('surface') >= 1,
+      refract: params.get('rippleRefract'),
+      invert: params.get('inverted') >= 1,
     });
+  }
+
+  // Lab: the water surface is poked now and then so it is never glass, and
+  // by every touch on the stage.
+  function ambientRipples(dt) {
+    const perMin = params.get('rippleAmbient');
+    if (!(perMin > 0)) return;
+    rippleAcc += dt;
+    const every = 60 / perMin;
+    if (rippleAcc < every) return;
+    rippleAcc = 0;
+    fluid.disturb(0.1 + Math.random() * 0.8, 0.1 + Math.random() * 0.8, 0.012 + Math.random() * 0.01, 0.25 + Math.random() * 0.35);
+  }
+  function touchRipple(x, y) {
+    if (params.get('surface') < 1) return;
+    const { u, v } = fluid.uvFromClient(x, y);
+    fluid.disturb(u, v, 0.016, params.get('rippleTouch'));
   }
 
   // Faint ambient wisps at the edges while not playing, so the water is alive.
@@ -535,7 +559,10 @@ export function createInkRenderer({ params }) {
       params.on((key) => {
         if (key === 'palette' || key === null) applyPalette();
         if (key === 'simScale' || key === null) fluid.setSimScale(params.get('simScale'));
+        if (key === 'inverted' || key === null) document.body.classList.toggle('inverted', params.get('inverted') >= 1);
       });
+      document.body.classList.toggle('inverted', params.get('inverted') >= 1);
+      window.addEventListener('pointerdown', (ev) => touchRipple(ev.clientX, ev.clientY), { passive: true });
 
       els.modeBtns.forEach((btn) => {
         btn.addEventListener('click', () => { if (btn.dataset.mode) on.modeSelect(btn.dataset.mode); });

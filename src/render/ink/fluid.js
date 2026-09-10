@@ -11,7 +11,7 @@
 // No DOM beyond the canvas it is given. No rules. See ../../params.js for
 // the knobs that feed `step()` and `render()`.
 
-import { VERT, FRAG_ADVECT, FRAG_SPLAT, FRAG_STAMP, FRAG_DIFFUSE, FRAG_PREFILTER, FRAG_BLUR, FRAG_DISPLAY } from './shaders.js';
+import { VERT, FRAG_ADVECT, FRAG_SPLAT, FRAG_STAMP, FRAG_DIFFUSE, FRAG_WAVE, FRAG_DISTURB, FRAG_PREFILTER, FRAG_BLUR, FRAG_DISPLAY } from './shaders.js';
 import { PALETTES, buildLut, paletteAt } from './palettes.js';
 
 const GL_OPTS = {
@@ -132,6 +132,8 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
   const progSplat = program(FRAG_SPLAT);
   const progDiffuse = program(FRAG_DIFFUSE);
   const progStamp = program(FRAG_STAMP);
+  const progWave = program(FRAG_WAVE);
+  const progDisturb = program(FRAG_DISTURB);
   const progPre = program(FRAG_PREFILTER);
   const progBlur = program(FRAG_BLUR);
   const progDisplay = program(FRAG_DISPLAY);
@@ -178,6 +180,8 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
   let dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
   let DW = 0, DH = 0, SW = 0, SH = 0;
   let dye = null, pre = null, bloomA = null, bloomB = null;
+  let height = null;   // water surface ping-pong (lab), allocated on first use
+  let HW = 0, HH = 0;
   let scale = simScale;
 
   function resize() {
@@ -187,6 +191,7 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     canvas.width = w; canvas.height = h;
     DW = w; DH = h;
     if (dye) dye.free();
+    if (height) { height.free(); height = null; }
     freeTarget(pre); freeTarget(bloomA); freeTarget(bloomB);
     SW = Math.max(160, Math.floor(w * scale));
     SH = Math.max(120, Math.floor(h * scale));
@@ -249,11 +254,50 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     dye.swap();
   }
 
+  // ---- water surface (lab) ------------------------------------------------
+  function ensureHeight() {
+    if (height) return;
+    HW = Math.max(80, Math.floor(SW / 2)); HH = Math.max(60, Math.floor(SH / 2));
+    height = makePingPong(HW, HH);
+  }
+  function wave(cfg) {
+    ensureHeight();
+    gl.disable(gl.BLEND);
+    gl.useProgram(progWave.p);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, height.write.fbo);
+    gl.viewport(0, 0, HW, HH);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, height.read.tex);
+    gl.uniform1i(progWave.u.u_h, 0);
+    gl.uniform2f(progWave.u.u_texel, 1 / HW, 1 / HH);
+    gl.uniform1f(progWave.u.u_damp, cfg.rippleDamp ?? 0.986);
+    drawQuad();
+    height.swap();
+  }
+  /** Poke the surface: a gaussian bump of `amount` at uv, radius in uv. */
+  function disturb(u, v, radius, amount) {
+    ensureHeight();
+    gl.disable(gl.BLEND);
+    gl.useProgram(progDisturb.p);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, height.write.fbo);
+    gl.viewport(0, 0, HW, HH);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, height.read.tex);
+    gl.uniform1i(progDisturb.u.u_h, 0);
+    gl.uniform2f(progDisturb.u.u_point, u, v);
+    gl.uniform1f(progDisturb.u.u_aspect, HW / HH);
+    gl.uniform1f(progDisturb.u.u_radius, radius);
+    gl.uniform1f(progDisturb.u.u_amount, amount);
+    drawQuad();
+    height.swap();
+  }
+
   /** One fixed simulation step. `dt` in seconds. */
   function step(dt, cfg) {
     simTime += dt * 0.9;
     advect(dt, cfg);
     diffuse(cfg);
+    if (cfg.surface) wave(cfg);
   }
 
   // Mask texture for `stamp()`; re-uploaded per call.
@@ -367,6 +411,14 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     gl.uniform1f(progDisplay.u.u_vig, cfg.vignette ?? 1.15);
     gl.uniform1f(progDisplay.u.u_light, cfg.light ?? 1);
     gl.uniform3f(progDisplay.u.u_core, lut[0], lut[1], lut[2]);
+    // Surface + inversion (lab). Without a height field the refraction is
+    // driven by the (flat) dye texture at zero strength.
+    const hasSurface = !!(cfg.surface && height);
+    gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, hasSurface ? height.read.tex : dye.read.tex);
+    gl.uniform1i(progDisplay.u.u_height, 3);
+    gl.uniform2f(progDisplay.u.u_htexel, hasSurface ? 1 / HW : 1 / SW, hasSurface ? 1 / HH : 1 / SH);
+    gl.uniform1f(progDisplay.u.u_refract, hasSurface ? (cfg.refract ?? 1) : 0);
+    gl.uniform1f(progDisplay.u.u_invert, cfg.invert ? 1 : 0);
     drawQuad();
   }
 
@@ -409,16 +461,18 @@ export function createFluid(canvas, { simScale = 0.5, maxDpr = 2 } = {}) {
     splat,
     stamp,
     rectFromClient,
+    disturb,
     render,
     clear() { dye.clear(); },
     uvFromClient,
     destroy() {
       if (dye) dye.free();
+      if (height) height.free();
       freeTarget(pre); freeTarget(bloomA); freeTarget(bloomB);
       gl.deleteTexture(lutTex);
       gl.deleteTexture(maskTex);
       gl.deleteBuffer(quad);
-      for (const p of [progAdvect, progSplat, progStamp, progDiffuse, progPre, progBlur, progDisplay]) gl.deleteProgram(p.p);
+      for (const p of [progAdvect, progSplat, progStamp, progDiffuse, progWave, progDisturb, progPre, progBlur, progDisplay]) gl.deleteProgram(p.p);
     },
   };
 }

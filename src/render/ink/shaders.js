@@ -132,6 +132,42 @@ void main() {
   gl_FragColor = mix(added, pinned, u_erase);
 }`;
 
+// Water surface: a height field driven by the wave equation on two buffers
+// (the koi pond's method, on the GPU). RG = (height now, height before).
+export const FRAG_WAVE = `
+precision highp float;
+varying vec2 v_uv;
+uniform sampler2D u_h;
+uniform vec2  u_texel;
+uniform float u_damp;
+void main() {
+  vec2 c = texture2D(u_h, v_uv).rg;
+  float n = texture2D(u_h, v_uv + vec2(u_texel.x, 0.0)).r
+          + texture2D(u_h, v_uv - vec2(u_texel.x, 0.0)).r
+          + texture2D(u_h, v_uv + vec2(0.0, u_texel.y)).r
+          + texture2D(u_h, v_uv - vec2(0.0, u_texel.y)).r;
+  float next = (n * 0.5 - c.g) * u_damp;
+  // Edges absorb.
+  float edge = step(u_texel.x, v_uv.x) * step(v_uv.x, 1.0 - u_texel.x) * step(u_texel.y, v_uv.y) * step(v_uv.y, 1.0 - u_texel.y);
+  gl_FragColor = vec4(next * edge, c.r, 0.0, 1.0);
+}`;
+
+export const FRAG_DISTURB = `
+precision highp float;
+varying vec2 v_uv;
+uniform sampler2D u_h;
+uniform vec2  u_point;
+uniform float u_aspect;
+uniform float u_radius;
+uniform float u_amount;
+void main() {
+  vec4 h = texture2D(u_h, v_uv);
+  vec2 d = (v_uv - u_point) * vec2(u_aspect, 1.0);
+  float f = exp(-dot(d, d) / (u_radius * u_radius));
+  h.r += f * u_amount;
+  gl_FragColor = h;
+}`;
+
 export const FRAG_PREFILTER = `
 precision highp float;
 varying vec2 v_uv;
@@ -177,12 +213,26 @@ uniform float u_bloomMix;
 uniform float u_vig;
 uniform float u_light;
 uniform vec3  u_core;     // palette core colour; injected colour is measured against it
+uniform sampler2D u_height;   // water surface (lab)
+uniform vec2  u_htexel;
+uniform float u_refract;      // 0 = no surface
+uniform float u_invert;       // 1 = black ink on a clear ground
 
 vec3 lut(float x) { return texture2D(u_lut, vec2(clamp(x, 0.002, 0.998), 0.5)).rgb; }
 float rnd(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
 void main() {
-  vec4 dye = texture2D(u_dye, v_uv);
+  // Surface: the height gradient bends the view of everything below it and
+  // lights the crests. Zero-cost when off (u_refract = 0).
+  vec2 uv = v_uv;
+  float hL = texture2D(u_height, v_uv - vec2(u_htexel.x, 0.0)).r;
+  float hR = texture2D(u_height, v_uv + vec2(u_htexel.x, 0.0)).r;
+  float hD = texture2D(u_height, v_uv - vec2(0.0, u_htexel.y)).r;
+  float hU = texture2D(u_height, v_uv + vec2(0.0, u_htexel.y)).r;
+  vec2 hg = vec2(hR - hL, hU - hD);
+  uv += hg * 0.06 * u_refract;
+  float crest = (hR - hL) * 0.7 + (hU - hD) * 0.7;
+  vec4 dye = texture2D(u_dye, uv);
   float dens = dye.a;
 
   // Refraction caustics: the density gradient bends the floor light and
@@ -221,12 +271,28 @@ void main() {
   // u_light (the ⧖ run dims the room).
   vec2 q = v_uv - 0.5;
   float vg = 1.0 - dot(q, q) * u_vig;
-  vec3 floorCol = mix(vec3(0.030, 0.034, 0.048), vec3(0.064, 0.070, 0.096), clamp(vg, 0.0, 1.0)) * u_light;
-  c = floorCol + c;
-  c *= clamp(vg * 1.25 + 0.15, 0.0, 1.0);
 
-  // Soft filmic shoulder, then grain.
-  c = c / (c + vec3(0.85)) * 1.85;
+  vec3 dark;
+  {
+    vec3 floorCol = mix(vec3(0.030, 0.034, 0.048), vec3(0.064, 0.070, 0.096), clamp(vg, 0.0, 1.0)) * u_light;
+    dark = floorCol + c;
+    dark += vec3(0.5, 0.6, 0.7) * max(crest, 0.0) * 1.6 * u_refract;   // lit crests
+    dark *= clamp(vg * 1.25 + 0.15, 0.0, 1.0);
+    dark = dark / (dark + vec3(0.85)) * 1.85;
+  }
+  vec3 light;
+  {
+    // Clear ground: pale water over sand, a little cooler toward the rim.
+    // The ink subtracts light instead of adding it; the caustic term still
+    // brightens the floor where the dye thins.
+    vec3 ground = mix(vec3(0.86, 0.87, 0.84), vec3(0.93, 0.93, 0.90), clamp(vg, 0.0, 1.0)) * u_light;
+    float inkL = clamp(dot(c, vec3(0.3333)) * 1.15, 0.0, 1.0);
+    light = ground * (1.0 - inkL * 0.92);
+    light += vec3(0.10) * caustic * 0.5;
+    light += vec3(0.12, 0.13, 0.14) * crest * 2.0 * u_refract;        // crests catch the sky
+    light *= clamp(vg * 0.6 + 0.55, 0.0, 1.0);
+  }
+  c = mix(dark, light, u_invert);
   c += (rnd(v_uv * u_texel * 900.0 + u_time) - 0.5) * u_grain;
 
   gl_FragColor = vec4(c, 1.0);
