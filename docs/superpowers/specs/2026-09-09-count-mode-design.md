@@ -165,11 +165,16 @@ main page medium top right as a simplified glyph of itself, clickable." PoC:
   whole numeral grows in, then the ring is rasterised from the builder's
   stave (its width profile drawn as round-capped segments) and pinned at the
   count's breathing anchor (`countRingInk`, `countRingPin`, the shared
-  breathe params). Every later beat grows **only the figures**
-  (`painter.begin({ skipStave: true })`, distances re-based so the first
-  figure starts at once), painted at the ring's position *now* so they stick
-  to it, at `countCInk × countRFigInk`, and left to dissolve on the count
-  clock. Figures are 0.5 R tall and reach 0.65 of that outward. Eight places,
+  breathe params). **Rev 3 (operator: "we do not redraw what does not need
+  redrawing. from 9 to 10, we draw the first 1 of the tens. that stays all the
+  way until 20")**: every slot's figure is pinned like the ring, from 400 ms
+  after it finished growing, and stays until its digit changes. A beat diffs
+  the places: a changed slot releases its old figure (no longer pinned, it
+  dissolves on the count clock) and grows the new one alone
+  (`painter.begin({ skipStave: true, places: ['slotK'] })`), at the ring's
+  position *now* so it sticks to it, at `countCInk × countRFigInk`. A slot
+  that becomes 0 draws nothing. Figure rasters for pinning are cached per
+  size / slot / digit. Figures are 0.5 R tall and reach 0.65 of that outward. Eight places,
   wrap 10^8, deep link `#countup3` (with `t=`), same hold-to-leave.
 
 ## Logogram counter, diegetic pass (2026-09-10)

@@ -3,6 +3,12 @@
 Newest at top. Alternatives we chose *not* to build yet live here so they
 can be picked up later without re-deriving them.
 
+## 2026-09-10 — ◎ figures are permanent too, until their digit changes
+
+Only the slot that changes is redrawn: its old figure is released to dissolve,
+the new one grows out of the ring and is then pinned. 10 draws the tens' 1,
+which stays until 20.
+
 ## 2026-09-10 — ◎ ring is permanent, figures come and go
 
 The ◎ counter no longer redraws its circle: the ring is a pinned, hovering

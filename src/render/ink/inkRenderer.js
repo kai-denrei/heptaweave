@@ -11,9 +11,12 @@
 //      never frozen, dissolved to the floor inside `countCLife` so stems do
 //      not pile up. Uses the growth-front painter with a per-glyph tempo.
 //   ◎  (COUNT_R) the ring-stave numeral: the ring is permanent — a pinned
-//      raster at a breathing anchor, like the logogram's ring — and only the
-//      digit figures are grown each beat, at the ring's current position, and
-//      left to dissolve on the count clock.
+//      raster at a breathing anchor, like the logogram's ring — and so is
+//      every digit figure until its digit changes: then that figure alone is
+//      released to dissolve on the count clock while the new one grows out
+//      of the ring where the ring is now, and is pinned once grown. Nothing
+//      that need not be redrawn is redrawn: 10 draws the tens' 1, which stays
+//      until 20.
 //   +  (COUNT) one large logogram in layers (ring + one per digit). The
 //      water runs the Cistercian counter's clock (`countLife`, `countFlow`),
 //      but the ring and the current digits are *pinned*: each frame the dye
@@ -37,7 +40,7 @@
 import { createRng } from '../../util/rng.js';
 import { renderHeptapodNumeralV2 } from '../../heptacipher/numeralV2.js';
 import { PATTERNS } from '../../heptacipher/morsePatterns.js';
-import { ringStaveGrowthPx } from '../../cistercian/ringStave.js';
+import { ringStaveGrowthPx, placeDigits } from '../../cistercian/ringStave.js';
 import { renderCistercianInk } from '../../cistercian/cistercianInk.js';
 import { renderBinaryScore } from '../binaryScore.js';
 import { renderGameOverDot } from '../gameOverDot.js';
@@ -489,6 +492,7 @@ export function createInkRenderer({ params }) {
     const first = !countCurrent;
     const life = params.get('countCLife');
     const dissip = dissipFor(life, params.get('dissolveFloor'));
+    const now = performance.now();
     glyph = {
       number, seed: number + 1, mode: 'COUNT_R', revealMs: life * 1000, dissip, stays: false, seconds: life,
       tempo: { holdMs: 0, rampMs: params.get('countCRamp') },
@@ -498,17 +502,63 @@ export function createInkRenderer({ params }) {
       const radiusPx = params.get('strokeRadius') * box.w;
       const ring = ringStaveRingCanvas(box.w, radiusPx);
       countGeom = { size: Math.round(box.w), cx: box.x + box.w / 2, cy: box.y + box.h / 2, w: box.w, h: box.h, rw: ring.width, rh: ring.height };
-      countCurrent = { ring: { c: ring, centre: { x: ring.width / 2, y: ring.height / 2 } }, lines: [], drops: new Set(), ink: params.get('countRingInk'), pin: params.get('countRingPin') };
+      countCurrent = {
+        ring: { c: ring, centre: { x: ring.width / 2, y: ring.height / 2 } }, lines: [], drops: new Set(),
+        ink: params.get('countRingInk'), pin: params.get('countRingPin'),
+        figs: new Map(),        // slot → { digit, layer, pinAt }
+        radiusPx, size: box.w,
+      };
     }
-    painter.begin({
-      number, box: first ? promptBox() : countBoxNow(performance.now()), seed: number + 1, rgb: coreRgb(),
-      traceMs: Math.min(params.get('countCTrace'), periodMs * 0.9),
-      inkScale: params.get('countCInk') * params.get('countRFigInk'),
-      figure: 'ringstave',
-      skipStave: !first,
-    });
-    phase = 'paint';
-    phaseStart = performance.now();
+    // Diff the places: a slot whose digit changed (or is new) releases its
+    // old figure — it is simply no longer pinned — and grows the new one.
+    const digits = placeDigits(number);
+    const figs = countCurrent.figs;
+    const grow = [];
+    const traceMs = Math.min(params.get('countCTrace'), periodMs * 0.9);
+    for (let k = 0; k < Math.max(digits.length, figs.size + 1); k++) {
+      const d = digits[k] ?? 0;
+      const had = figs.get(k);
+      if (had && had.digit === d) continue;
+      if (had) figs.delete(k);
+      if (d === 0) continue;                          // 0 draws nothing
+      figs.set(k, { digit: d, layer: ringStaveFigureLayer(countCurrent.size, countCurrent.radiusPx, number, k), pinAt: now + traceMs + 400 });
+      grow.push(`slot${k}`);
+    }
+    if (first || grow.length) {
+      painter.begin({
+        number, box: first ? promptBox() : countBoxNow(now), seed: number + 1, rgb: coreRgb(),
+        traceMs,
+        inkScale: params.get('countCInk') * params.get('countRFigInk'),
+        figure: 'ringstave',
+        skipStave: !first,
+        places: first ? null : grow,
+      });
+      phase = 'paint';
+      phaseStart = now;
+    }
+  }
+  // One slot's figure as a white raster (cached per size / slot / digit).
+  const figLayers = new Map();
+  function ringStaveFigureLayer(size, radiusPx, number, slot) {
+    const d = placeDigits(number)[slot] ?? 0;
+    const key = `${Math.round(size)}:${slot}:${d}`;
+    if (figLayers.has(key)) return figLayers.get(key);
+    const { paths } = ringStaveGrowthPx({ number, size, padFrac: 0.10, slots: params.get('ringSlots') });
+    const c = document.createElement('canvas');
+    c.width = Math.max(2, Math.round(size)); c.height = c.width;
+    const ctx = c.getContext('2d');
+    ctx.strokeStyle = '#fff'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const p of paths) {
+      if (p.place !== `slot${slot}`) continue;
+      const pts = p.points;
+      for (let i = 1; i < pts.length; i++) {
+        ctx.lineWidth = Math.max(1, radiusPx * ((pts[i - 1].wf ?? 1) + (pts[i].wf ?? 1)));
+        ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
+      }
+    }
+    const layer = { c, centre: { x: c.width / 2, y: c.height / 2 } };
+    figLayers.set(key, layer);
+    return layer;
   }
   // The count anchor as a client-space box (the breathing transform of
   // countGeom), so figures painted now sit on the ring where it is now.
@@ -606,6 +656,12 @@ export function createInkRenderer({ params }) {
       const [i, k] = id.split(':').map(Number);
       const l = countLayerSync(`drop:${countGeom.size}:${i}:${k}`);
       if (l) fluid.stamp(l.c, rect, rgb, pin, { erase: true, target: ink });
+    }
+    // ◎: every slot's figure, once it has finished growing.
+    if (countCurrent.figs) {
+      for (const f of countCurrent.figs.values()) {
+        if (now >= f.pinAt) fluid.stamp(f.layer.c, rect, rgb, pin, { erase: true, target: ink });
+      }
     }
   }
   // Resolved layers, for the per-frame pin (the promise resolved long ago).
