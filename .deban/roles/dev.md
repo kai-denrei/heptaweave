@@ -92,13 +92,15 @@ Implementation details, file-level conventions, build/test commands, dev-server.
 
 ## Assumptions
 - Python 3 is on PATH (it is on macOS). — status: validated — since: 2026-05-20
-- The dev server can be reached on `http://127.0.0.1:8766` from the user's browser. — status: untested — since: 2026-05-20
+- The dev server can be reached on `http://127.0.0.1:8766` from the user's browser. — status: validated 2026-09-10 (8765 was taken by another project; back on 8766, LAN 192.168.0.198:8766). — since: 2026-05-20
+- Headless SwiftShader frame counts (25–38 fps on the count screens) are a floor, not a measure; `steps > frames` in the CDP stats means the sim is catching up, i.e. the renderer, not the sim, is the bottleneck there. — status: untested on device — since: 2026-09-10
 
 ## Dependencies
 Blocked by:
 Feeds into:
 
 ## Session Log
+- 2026-09-10 (full-day sync) — Assumptions updated (port, headless fps as a floor). Day's dead ends: 6000-splat numeral, single-slot mask cache, figure not passed to the painter, SVG filter region on axis-aligned strokes (docs page), 0.42 R figures unreadable.
 - 2026-09-10 (◎ per-slot pins) — figures permanent until their digit changes; SW v18.
 - 2026-09-10 (◎ permanent ring) — pinned ring + figure-only growth; figures enlarged; SW v17.
 - 2026-09-10 (◎ PoC) — COUNT_R + emblem + countup3; SW v16.
