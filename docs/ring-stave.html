@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ring Stave Numerals</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Source+Sans+3:wght@300;400;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+  /* The sheet lives in the app's own world: the darkroom floor, one ink,
+     one glow. A single deliberate theme — this glyph is designed for the
+     ink stage, not for paper. */
+  :root {
+    --floor: #0b0c12;
+    --floor-2: #12141d;
+    --ink: #ebe8e0;
+    --ink-dim: #8a8ea3;
+    --glow: #9db0ff;
+    --ember: #a83b2b;
+    --hair: rgba(235, 232, 224, 0.12);
+    --serif: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+    --sans: "Source Sans 3", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+  }
+  html { color-scheme: dark; }
+  body { background: var(--floor); color: var(--ink); font: 300 17px/1.55 var(--sans); margin: 0; }
+  .page { max-width: 960px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font: 400 56px/1.05 var(--serif); letter-spacing: 0.01em; margin: 0 0 8px; text-wrap: balance; }
+  h2 { font: 400 30px/1.15 var(--serif); margin: 56px 0 12px; text-wrap: balance; }
+  .eyebrow { font: 400 12px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 18px; }
+  p { max-width: 62ch; margin: 0 0 14px; }
+  p.lede { font: 400 22px/1.4 var(--serif); max-width: 40ch; color: var(--ink); }
+  em { font-style: italic; }
+  .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; margin: 24px 0 8px; }
+  .hero svg { width: 100%; height: auto; display: block; }
+  .digits { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 16px; }
+  .digits figure { margin: 0; background: var(--floor-2); border-radius: 6px; padding: 10px 8px 8px; text-align: center; }
+  .digits svg { width: 100%; height: auto; display: block; }
+  .digits figcaption { font: 400 13px/1.3 var(--mono); color: var(--ink-dim); margin-top: 6px; }
+  .digits figcaption b { color: var(--ink); font-weight: 400; margin-right: 6px; }
+  .places { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  .places svg { width: 100%; height: auto; display: block; }
+  .places figure { margin: 0; }
+  .places figcaption { font: 400 14px/1.4 var(--sans); color: var(--ink-dim); margin-top: 8px; }
+  .places figcaption b { color: var(--ink); font-weight: 600; }
+  table { border-collapse: collapse; font-size: 15px; margin: 8px 0 0; max-width: 62ch; }
+  td, th { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--hair); vertical-align: top; }
+  th { font: 400 12px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); }
+  td:first-child { font-family: var(--mono); white-space: nowrap; color: var(--ink); }
+  .questions { list-style: none; padding: 0; margin: 0; max-width: 62ch; }
+  .questions li { padding: 10px 0; border-bottom: 1px solid var(--hair); }
+  .questions li b { font-weight: 600; }
+  .glowline { stroke: var(--ink); stroke-width: 6; fill: none; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 2.5px rgba(157, 176, 255, 0.6)); }
+  .faint { stroke: var(--ink-dim); stroke-width: 1.2; fill: none; stroke-dasharray: 3 6; opacity: 0.7; }
+  .lbl { font: 400 11px var(--mono); fill: var(--ink-dim); letter-spacing: 0.08em; }
+  @media (max-width: 700px) {
+    h1 { font-size: 42px; }
+    .hero, .places { grid-template-columns: 1fr; }
+    .digits { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="eyebrow">heptaweave · glyph proposal · 2026-09-10</div>
+  <h1>Ring Stave Numerals</h1>
+  <p class="lede">The ring is the stave. Four short stems leave it at right angles, and the Cistercian digit logic hangs off each stem unchanged.</p>
+
+  <div class="hero">
+    <div>
+      <p>In a Cistercian numeral the four digits hang off one vertical stave, one per quadrant, and every digit shape is a small figure attached to that stave. Here the stave bends into the heptaweave’s ring. At four points the ring throws out a stem, radial and short, and the digit is drawn in the stem’s own frame: <em>along</em> the stem is what “up the stave” used to be, <em>across</em> it is what “out from the stave” used to be.</p>
+      <p>Nothing about the digit shapes changes. 1 and 2 are bars, 3 and 4 are diagonals, 5 closes into a triangle, 6 stands apart, 7 and 8 are bowls, 9 is a square. What changes is where a stave lives: it now sprouts from a circle, four times.</p>
+    </div>
+    <svg viewBox="0 0 360 360" id="hero" aria-label="the number 2026 as a ring stave numeral"></svg>
+  </div>
+
+  <h2>The ten shapes, on one stem</h2>
+  <p>Stem frame: the stem rises from the ring (foot) to its tip. A digit uses two levels, the tip <span style="font-family:var(--mono)">T</span> and a foot level <span style="font-family:var(--mono)">F</span> a little above the ring, and one width <span style="font-family:var(--mono)">w</span> to the digit side. Zero is a bare stem.</p>
+  <div class="digits" id="digits"></div>
+
+  <h2>Four places, four stems</h2>
+  <div class="places">
+    <figure>
+      <svg viewBox="0 0 360 360" id="places" aria-label="place layout"></svg>
+      <figcaption><b>Where the stems go.</b> Units upper-right, tens upper-left, hundreds lower-right, thousands lower-left, the Cistercian quadrants mapped onto the ring. Left places mirror the digit side; lower places swap tip and foot, so the four quadrants keep the full Cistercian symmetry and read apart by form, not only by position.</figcaption>
+    </figure>
+    <figure>
+      <svg viewBox="0 0 360 360" id="sample" aria-label="the number 1234"></svg>
+      <figcaption><b>1234.</b> One bar at a tip, one bar at a foot, two diagonals leaning opposite ways. The ring carries the eye round; the stems tell it where to stop.</figcaption>
+    </figure>
+  </div>
+
+  <h2>How it is written in ink</h2>
+  <p>Same growth front as the Cistercian prompt, with the ring already on the water. The front starts where each stem meets the ring and runs outward: stem first, then the digit figure, all four places at once. Digit 6 keeps its own seed, exactly as it does today. In the counter, a changed digit unpins and dissolves while the new one grows from the ring; the ring itself is never redrawn.</p>
+  <table>
+    <tr><th>digit</th><th>figure in the stem frame</th><th>Cistercian source</th></tr>
+    <tr><td>1</td><td>bar at the tip, out to w</td><td>(1,0)→(2,0)</td></tr>
+    <tr><td>2</td><td>bar at the foot, out to w</td><td>(1,1)→(2,1)</td></tr>
+    <tr><td>3</td><td>diagonal tip → foot-out</td><td>(1,0)→(2,1)</td></tr>
+    <tr><td>4</td><td>diagonal foot → tip-out</td><td>(1,1)→(2,0)</td></tr>
+    <tr><td>5</td><td>foot → tip-out → tip: a triangle with the stem</td><td>(1,1)→(2,0)→(1,0)</td></tr>
+    <tr><td>6</td><td>a bar parallel to the stem at w, tip to foot, touching nothing</td><td>(2,0)→(2,1)</td></tr>
+    <tr><td>7</td><td>tip bar then down the outer edge: a bowl opening toward the ring</td><td>(1,0)→(2,0)→(2,1)</td></tr>
+    <tr><td>8</td><td>foot bar then up the outer edge: a bowl opening outward</td><td>(1,1)→(2,1)→(2,0)</td></tr>
+    <tr><td>9</td><td>foot bar, outer edge, tip bar: a square closed by the stem</td><td>(1,1)→(2,1)→(2,0)→(1,0)</td></tr>
+  </table>
+
+  <h2>To settle before building</h2>
+  <ul class="questions">
+    <li><b>Stem positions.</b> The diagonals (45°, 135°, 225°, 315°) as drawn, or the four lobe positions the heptaweave already uses for its Morse marks? The lobes keep the two glyph systems on one skeleton; the diagonals keep the Cistercian quadrant reading cleaner.</li>
+    <li><b>Inside or outside.</b> Stems shooting outward (drawn) grow the figure; stems pointing inward keep it inside the ring and read more like a seal. Outward is the recommendation: the ring stays a ring, and the counter’s pinned ring has empty water around it to grow into.</li>
+    <li><b>Stem length and digit width.</b> Drawn at 0.42 R for the stem and 0.6 of that for w. A shorter stem reads as “ring with ticks”; longer stops reading as one figure. Tune on the phone.</li>
+    <li><b>Mirroring for the lower places.</b> Full Cistercian symmetry (tip/foot swap) as drawn, or side-mirroring only. Full symmetry is faithful to the source; side-only is easier to learn.</li>
+    <li><b>The gap and the wet-drop.</b> Keep the enso’s opening and drop? They would sit between stems. The counter’s ring already carries them; the glyph could inherit both for free.</li>
+  </ul>
+</div>
+
+<script>
+(function () {
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  // Glow is a CSS drop-shadow, not an SVG filter: a filter region sized by
+  // the bounding box collapses to nothing on a straight axis-aligned stroke.
+  function defs() {}
+  // Digit figures in the stem frame: stem from (0,0) [foot on the ring] to
+  // (0,-1) [tip]; digit side is +x. Levels T = -1, F = -0.3; width w = 0.6.
+  const T = -1, F = -0.3, W = 0.6;
+  const FIG = {
+    0: [],
+    1: [[[0, T], [W, T]]],
+    2: [[[0, F], [W, F]]],
+    3: [[[0, T], [W, F]]],
+    4: [[[0, F], [W, T]]],
+    5: [[[0, F], [W, T], [0, T]]],
+    6: [[[W, T], [W, F]]],
+    7: [[[0, T], [W, T], [W, F]]],
+    8: [[[0, F], [W, F], [W, T]]],
+    9: [[[0, F], [W, F], [W, T], [0, T]]],
+  };
+  // Draw a stem + digit at ring point angle `a` (radians), stem length L,
+  // with `side` (+1/-1) mirroring the digit side and `flip` swapping tip/foot.
+  function stem(svg, cx, cy, R, a, L, digit, side, flip, cls) {
+    const ux = Math.cos(a), uy = Math.sin(a);         // outward
+    const tx = -uy, ty = ux;                           // tangential (+side)
+    const map = ([x, y]) => {
+      const along = flip ? (1 + y) : -y;               // 0 at the ring, 1 at the tip; flip swaps tip and foot
+      const across = x * side;
+      return [cx + ux * (R + along * L) + tx * across * L, cy + uy * (R + along * L) + ty * across * L];
+    };
+    const g = el('g', {}, svg);
+    const [sx, sy] = map([0, 0]), [ex, ey] = map([0, -1]);
+    el('path', { d: `M${sx.toFixed(1)} ${sy.toFixed(1)} L${ex.toFixed(1)} ${ey.toFixed(1)}`, class: cls }, g);
+    for (const poly of FIG[digit]) {
+      const pts = poly.map(map);
+      el('path', { d: 'M' + pts.map(p => p.map(v => v.toFixed(1)).join(' ')).join(' L'), class: cls }, g);
+    }
+    return g;
+  }
+  function ring(svg, cx, cy, R, cls) {
+    // An enso-ish ring with a small opening near the top-left.
+    const a0 = -Math.PI * 0.62, a1 = a0 + Math.PI * 1.9;
+    const p = [];
+    for (let i = 0; i <= 96; i++) {
+      const a = a0 + (a1 - a0) * i / 96;
+      const r = R * (1 + 0.012 * Math.sin(a * 3 + 0.7) + 0.008 * Math.sin(a * 7));
+      p.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+    }
+    el('path', { d: 'M' + p.map(q => q.map(v => v.toFixed(1)).join(' ')).join(' L'), class: cls }, svg);
+  }
+  // Places: units upper-right, tens upper-left, hundreds lower-right, thousands lower-left.
+  const PLACES = [
+    { name: 'thousands', a: Math.PI * 0.75, side: -1, flip: true },
+    { name: 'hundreds',  a: Math.PI * 0.25, side: +1, flip: true },
+    { name: 'tens',      a: -Math.PI * 0.75, side: -1, flip: false },
+    { name: 'units',     a: -Math.PI * 0.25, side: +1, flip: false },
+  ];
+  function numeral(svg, n, cx, cy, R, L) {
+    defs(svg);
+    ring(svg, cx, cy, R, 'glowline');
+    const d = [Math.floor(n / 1000) % 10, Math.floor(n / 100) % 10, Math.floor(n / 10) % 10, n % 10];
+    PLACES.forEach((p, i) => stem(svg, cx, cy, R, p.a, L, d[i], p.side, p.flip, 'glowline'));
+  }
+
+  // Hero: 2026.
+  numeral(document.getElementById('hero'), 2026, 180, 186, 96, 40);
+
+  // Digit sheet: each digit on a single upward stem.
+  const sheet = document.getElementById('digits');
+  const names = ['bare stem', 'tip bar', 'foot bar', 'diagonal', 'diagonal', 'triangle', 'apart', 'bowl in', 'bowl out', 'square'];
+  for (let d = 0; d <= 9; d++) {
+    const fig = document.createElement('figure');
+    const svg = el('svg', { viewBox: '0 0 120 130' });
+    defs(svg);
+    // a hint of the ring the stem leaves from
+    el('path', { d: 'M 8 118 Q 60 96 112 118', class: 'faint' }, svg);
+    stem(svg, 60, 154, 48, -Math.PI / 2, 54, d, +1, false, 'glowline');
+    fig.appendChild(svg);
+    const cap = document.createElement('figcaption');
+    cap.innerHTML = `<b>${d}</b>${names[d]}`;
+    fig.appendChild(cap);
+    sheet.appendChild(fig);
+  }
+
+  // Place layout: labelled quadrants with the same digit (7) in each, to
+  // show the mirroring.
+  const pl = document.getElementById('places');
+  defs(pl);
+  ring(pl, 180, 180, 96, 'glowline');
+  el('path', { d: 'M 40 40 L 320 320 M 320 40 L 40 320', class: 'faint' }, pl);
+  PLACES.forEach((p) => {
+    stem(pl, 180, 180, 96, p.a, 40, 7, p.side, p.flip, 'glowline');
+    const lx = 180 + Math.cos(p.a) * 158, ly = 180 + Math.sin(p.a) * 158;
+    const t = el('text', { x: lx.toFixed(1), y: ly.toFixed(1), class: 'lbl', 'text-anchor': 'middle', 'dominant-baseline': 'middle' }, pl);
+    t.textContent = p.name;
+  });
+
+  // Sample: 1234.
+  numeral(document.getElementById('sample'), 1234, 180, 180, 96, 40);
+})();
+</script>
+</body>
+</html>
