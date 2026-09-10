@@ -10,6 +10,10 @@
 //   +⟵ (COUNT_C) the ∞ prompt's Cistercian, one per second: traced fast,
 //      never frozen, dissolved to the floor inside `countCLife` so stems do
 //      not pile up. Uses the growth-front painter with a per-glyph tempo.
+//   ◎  (COUNT_R) the ring-stave numeral: the ring is permanent — a pinned
+//      raster at a breathing anchor, like the logogram's ring — and only the
+//      digit figures are grown each beat, at the ring's current position, and
+//      left to dissolve on the count clock.
 //   +  (COUNT) one large logogram in layers (ring + one per digit). The
 //      water runs the Cistercian counter's clock (`countLife`, `countFlow`),
 //      but the ring and the current digits are *pinned*: each frame the dye
@@ -33,6 +37,7 @@
 import { createRng } from '../../util/rng.js';
 import { renderHeptapodNumeralV2 } from '../../heptacipher/numeralV2.js';
 import { PATTERNS } from '../../heptacipher/morsePatterns.js';
+import { ringStaveGrowthPx } from '../../cistercian/ringStave.js';
 import { renderCistercianInk } from '../../cistercian/cistercianInk.js';
 import { renderBinaryScore } from '../binaryScore.js';
 import { renderGameOverDot } from '../gameOverDot.js';
@@ -477,6 +482,64 @@ export function createInkRenderer({ params }) {
     phaseStart = performance.now();
   }
 
+  // ◎ COUNT_R. First beat: the whole numeral grows in (ring and figures) and
+  // the ring is rasterised and pinned from then on, hovering at the count
+  // anchor. Later beats grow only the figures, at the ring's position now.
+  function paintRingCount(number, periodMs) {
+    const first = !countCurrent;
+    const life = params.get('countCLife');
+    const dissip = dissipFor(life, params.get('dissolveFloor'));
+    glyph = {
+      number, seed: number + 1, mode: 'COUNT_R', revealMs: life * 1000, dissip, stays: false, seconds: life,
+      tempo: { holdMs: 0, rampMs: params.get('countCRamp') },
+    };
+    if (first) {
+      const box = promptBox();
+      const radiusPx = params.get('strokeRadius') * box.w;
+      const ring = ringStaveRingCanvas(box.w, radiusPx);
+      countGeom = { size: Math.round(box.w), cx: box.x + box.w / 2, cy: box.y + box.h / 2, w: box.w, h: box.h, rw: ring.width, rh: ring.height };
+      countCurrent = { ring: { c: ring, centre: { x: ring.width / 2, y: ring.height / 2 } }, lines: [], drops: new Set(), ink: params.get('countRingInk'), pin: params.get('countRingPin') };
+    }
+    painter.begin({
+      number, box: first ? promptBox() : countBoxNow(performance.now()), seed: number + 1, rgb: coreRgb(),
+      traceMs: Math.min(params.get('countCTrace'), periodMs * 0.9),
+      inkScale: params.get('countCInk') * params.get('countRFigInk'),
+      figure: 'ringstave',
+      skipStave: !first,
+    });
+    phase = 'paint';
+    phaseStart = performance.now();
+  }
+  // The count anchor as a client-space box (the breathing transform of
+  // countGeom), so figures painted now sit on the ring where it is now.
+  function countBoxNow(now) {
+    const g = countGeom;
+    const T = Math.max(0.5, params.get('countBreatheS')) * 1000;
+    const amp = params.get('countBreathe') / 100;
+    const ph = (now / T) * Math.PI * 2;
+    const s = 1 + amp * Math.sin(ph);
+    const dx = amp * g.w * 0.6 * Math.sin(ph * 0.61 + 1.3);
+    const dy = amp * g.h * 0.6 * Math.sin(ph * 0.43 + 2.9);
+    const w = g.w * s, h = g.h * s;
+    return { x: g.cx - w / 2 + dx, y: g.cy - h / 2 + dy, w, h };
+  }
+  // The ring-stave ring as a white raster: the builder's stave polyline with
+  // its width profile, drawn as round-capped segments.
+  function ringStaveRingCanvas(size, radiusPx) {
+    const { paths } = ringStaveGrowthPx({ number: 0, size, padFrac: 0.10 });
+    const ring = paths.find(p => p.place === 'stave');
+    const c = document.createElement('canvas');
+    c.width = Math.max(2, Math.round(size)); c.height = c.width;
+    const ctx = c.getContext('2d');
+    ctx.strokeStyle = '#fff'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const pts = ring.points;
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineWidth = Math.max(1, radiusPx * ((pts[i - 1].wf ?? 1) + (pts[i].wf ?? 1)));
+      ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
+    }
+    return c;
+  }
+
   // Lab: the ring-stave numeral stands in for the Cistercian wherever the
   // growth painter draws (the ∞/⧖ prompt and the left counter).
   function figureKind() { return params.get('glyphMix') >= 1 ? 'ringstave' : 'cistercian'; }
@@ -530,8 +593,8 @@ export function createInkRenderer({ params }) {
   // digits — is left to the current and the clock. Runs after the sim steps.
   function countMaintain(now, dt) {
     if (!countCurrent || !countGeom) return;
-    const ink = params.get('countInk');
-    const pin = params.get('countPin');
+    const ink = countCurrent.ink ?? params.get('countInk');
+    const pin = countCurrent.pin ?? params.get('countPin');
     const rect = countRect(now);
     if (countAnims.length) stepCountAnims(now, dt, rect);
     const rgb = coreRgb().map(c => c * 3);
@@ -723,7 +786,8 @@ export function createInkRenderer({ params }) {
       if (!els.countStage || !fluid.ok) return;
       const n = Math.max(0, value | 0) % 10000;
       countKind = kind;
-      if (kind !== 'heptaweave') { paintCountGlyph(n, periodMs, kind === 'ringstave' ? 'ringstave' : figureKind()); return; }
+      if (kind === 'ringstave') { paintRingCount(n, periodMs); return; }
+      if (kind !== 'heptaweave') { paintCountGlyph(n, periodMs, figureKind()); return; }
       const digits = [Math.floor(n / 1000) % 10, Math.floor(n / 100) % 10, Math.floor(n / 10) % 10, n % 10];
       const stage = els.countStage.getBoundingClientRect();
       const short = Math.min(stage.width, stage.height);

@@ -3,6 +3,13 @@
 Newest at top. Alternatives we chose *not* to build yet live here so they
 can be picked up later without re-deriving them.
 
+## 2026-09-10 — ◎ ring is permanent, figures come and go
+
+The ◎ counter no longer redraws its circle: the ring is a pinned, hovering
+raster (same pin as the logogram's ring) and only the digit figures are grown
+each beat, at the ring's current position, then dissolve. Figures enlarged to
+0.5 R with their own ink multiplier.
+
 ## 2026-09-10 — ◎ the ring-stave counter
 
 The new glyph gets its own door: a medium emblem of itself at the landing's

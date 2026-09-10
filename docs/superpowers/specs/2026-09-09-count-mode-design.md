@@ -159,9 +159,18 @@ main page medium top right as a simplified glyph of itself, clickable." PoC:
 - A 72 px emblem at the landing's top right: the ring-stave numeral for 12
   (ribbon ring thin→thick, a tip bar on the units slot, a foot bar on the
   tens slot), inline SVG in `currentColor`. Tapping it starts `COUNT_R`.
-- `COUNT_R` is the Cistercian counter's pipeline with `figure: 'ringstave'`
-  forced (independent of the lab switch), eight places, wrap 10^8, deep
-  link `#countup3` (with `t=`), same hold-to-leave, same `countC` tuning.
+- `COUNT_R` (rev 2, operator: "we do not redraw the circle every time … it
+  hovers and fluctuates but stays permanent within bounds. the numbers stick
+  to it and dissolve"): the **ring is permanent** — on the first beat the
+  whole numeral grows in, then the ring is rasterised from the builder's
+  stave (its width profile drawn as round-capped segments) and pinned at the
+  count's breathing anchor (`countRingInk`, `countRingPin`, the shared
+  breathe params). Every later beat grows **only the figures**
+  (`painter.begin({ skipStave: true })`, distances re-based so the first
+  figure starts at once), painted at the ring's position *now* so they stick
+  to it, at `countCInk × countRFigInk`, and left to dissolve on the count
+  clock. Figures are 0.5 R tall and reach 0.65 of that outward. Eight places,
+  wrap 10^8, deep link `#countup3` (with `t=`), same hold-to-leave.
 
 ## Logogram counter, diegetic pass (2026-09-10)
 

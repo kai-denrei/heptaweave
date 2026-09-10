@@ -81,6 +81,9 @@ export const SCHEMA = [
   ['countC', 'countCLife',    'gone after (s)',       0.3,   3,    0.05,  0.9],
   ['countC', 'countCFlow',    'current ×',            0,     3,    0.05,  1.2],
   ['countC', 'countCInk',     'stroke ink ×',         0.2,   1.5,  0.05,  0.8],
+  ['countC', 'countRingInk',  '◎ ring ink (pinned)',  0.05,  1.5,  0.01,  0.55],
+  ['countC', 'countRingPin',  '◎ ring pin / frame',   0.01,  0.5,  0.01,  0.08],
+  ['countC', 'countRFigInk',  '◎ figure ink ×',       0.2,   4,    0.05,  2.4],
 
   // ---- lab: experiments behind the hidden gear (top-right) ----------------
   ['lab', 'inverted',      'inverted: black ink, clear ground', 0, 1, 1, 1],

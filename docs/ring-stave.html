@@ -79,7 +79,7 @@
   </div>
 
   <h2>The ten shapes, on the ring</h2>
-  <p>Ring frame: a digit spans two points on the ring, its tip <span style="font-family:var(--mono)">T</span> and its foot <span style="font-family:var(--mono)">F</span>, an arc of 0.42 R apart, and reaches out by <span style="font-family:var(--mono)">w</span> = 0.6 of that. Zero draws nothing: an empty slot is a bare stretch of ring.</p>
+  <p>Ring frame: a digit spans two points on the ring, its tip <span style="font-family:var(--mono)">T</span> and its foot <span style="font-family:var(--mono)">F</span>, an arc of 0.5 R apart, and reaches out by <span style="font-family:var(--mono)">w</span> = 0.65 of that. Zero draws nothing: an empty slot is a bare stretch of ring.</p>
   <div class="digits" id="digits"></div>
 
   <h2>Eight slots, from the thin end to the thick end</h2>
@@ -146,7 +146,7 @@
     8: [[[1, 1], [2, 1], [2, 0]]],
     9: [[[1, 1], [2, 1], [2, 0], [1, 0]]],
   };
-  const H_OF_R = 0.42, W_OF_R = 0.42 * 0.6;
+  const H_OF_R = 0.5, W_OF_R = 0.5 * 0.65;
   // Draw one digit at ring angle `ac` with tip/foot direction `dir`;
   // `Rf` sets the figure's size (defaults to the ring radius).
   function figure(svg, cx, cy, R, ac, digit, dir, cls) { return figureScaled(svg, cx, cy, R, R, ac, digit, dir, cls); }

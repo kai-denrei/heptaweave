@@ -49,9 +49,19 @@ export function createPainter({ fluid, params }) {
    * Free terminals (endpoints with the path's largest `d`, i.e. not the
    * attachment/seed end) get a taper; the whole path gets a gentle wobble.
    */
-  function buildSamples({ number, box, seed, figure = 'cistercian' }) {
+  function buildSamples({ number, box, seed, figure = 'cistercian', skipStave = false }) {
     const build = BUILDERS[figure] || cistercianGrowthPx;
-    const { paths, maxD: md } = build({ number, size: box.w, padFrac: 0.10, slots: params.get('ringSlots') });
+    let { paths, maxD: md } = build({ number, size: box.w, padFrac: 0.10, slots: params.get('ringSlots') });
+    if (skipStave) {
+      // The stave is already on the water (pinned): grow only the figures,
+      // re-based so the first figure starts at once and the trace spans them.
+      paths = paths.filter(p => p.place !== 'stave');
+      let minD = Infinity;
+      for (const p of paths) for (const q of p.points) minD = Math.min(minD, q.d);
+      if (!Number.isFinite(minD)) minD = 0;
+      paths = paths.map(p => ({ ...p, points: p.points.map(q => ({ ...q, d: q.d - minD })) }));
+      md = Math.max(1e-6, md - minD);
+    }
     maxD = md;
     radiusPx = params.get('strokeRadius') * box.w;
     const spacing = Math.max(0.5, radiusPx * 0.5);
@@ -115,9 +125,9 @@ export function createPainter({ fluid, params }) {
 
   return {
     /** Start growing a glyph. Nothing is splatted until `update()`. */
-    begin({ number, box, seed = 1, rgb, traceMs = null, inkScale = 1, figure = 'cistercian' }) {
-      current = { number, box, seed, rgb, traceMs, inkScale, figure };
-      samples = buildSamples({ number, box, seed, figure });
+    begin({ number, box, seed = 1, rgb, traceMs = null, inkScale = 1, figure = 'cistercian', skipStave = false }) {
+      current = { number, box, seed, rgb, traceMs, inkScale, figure, skipStave };
+      samples = buildSamples({ number, box, seed, figure, skipStave });
       emitted = 0;
       startMs = null;
       done = false;

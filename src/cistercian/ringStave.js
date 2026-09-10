@@ -30,10 +30,10 @@ import { UNIT_DIGIT_PATHS } from './digitMap.js';
 const RING_SAMPLES = 120;
 const GAP_CENTRE = Math.PI / 2;       // the opening, at the bottom
 const GAP_WIDTH = Math.PI * 0.16;     // ~29°: thin end bottom-right, thick end bottom-left
-const FIGURE_H = 0.42;                // tip↔foot arc length, of R
-const FIGURE_W = 0.6;                 // radial reach, of FIGURE_H
+const FIGURE_H = 0.5;                 // tip↔foot arc length, of R
+const FIGURE_W = 0.65;                // radial reach, of FIGURE_H
 const WF_THIN = 0.5, WF_THICK = 1.3;  // brush width factors at the two ends
-const WF_FIGURE = 0.85;
+const WF_FIGURE = 1.0;
 
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 function arcLengths(points) {

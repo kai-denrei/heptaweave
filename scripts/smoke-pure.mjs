@@ -260,7 +260,7 @@ console.log('ring stave');
   const cxy = 150;
   const angleOf = (q) => Math.atan2(q.y - cxy, q.x - cxy);
   const slotAngle = (k) => { const p = eight.paths.find(x => x.place === 'slot' + k); return angleOf(p.points[0]); };
-  const near = (a, b, tol = 0.6) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) < tol;
+  const near = (a, b, tol = 0.8) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) < tol;
   ok('the ring starts at the thin end (bottom right) and ends at the thick end (bottom left)', near(angleOf(ringPath.points[0]), ends.thin, 0.05) && near(angleOf(ringPath.points[ringPath.points.length - 1]), ends.thick, 0.05));
   ok('the ring swells from thin to thick', ringPath.points[0].wf < 0.6 && ringPath.points[ringPath.points.length - 1].wf > 1.2);
   ok('units sit by the thin end, the 8th place by the thick end', near(slotAngle(0), ends.thin) && near(slotAngle(7), ends.thick));
